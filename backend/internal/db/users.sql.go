@@ -36,11 +36,11 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 }
 
 const deleteUser = `-- name: DeleteUser :exec
-DELETE FROM users WHERE id = $1
+DELETE FROM users WHERE user_id = $1
 `
 
-func (q *Queries) DeleteUser(ctx context.Context, id int32) error {
-	_, err := q.db.Exec(ctx, deleteUser, id)
+func (q *Queries) DeleteUser(ctx context.Context, userID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteUser, userID)
 	return err
 }
 
@@ -104,15 +104,15 @@ func (q *Queries) GetUserByUserID(ctx context.Context, userID pgtype.UUID) (User
 const updateUsername = `-- name: UpdateUsername :exec
 UPDATE users
 SET username = $1, updated_at = CURRENT_TIMESTAMP
-WHERE id = $2
+WHERE user_id = $2
 `
 
 type UpdateUsernameParams struct {
 	Username string
-	ID       int32
+	UserID   pgtype.UUID
 }
 
 func (q *Queries) UpdateUsername(ctx context.Context, arg UpdateUsernameParams) error {
-	_, err := q.db.Exec(ctx, updateUsername, arg.Username, arg.ID)
+	_, err := q.db.Exec(ctx, updateUsername, arg.Username, arg.UserID)
 	return err
 }

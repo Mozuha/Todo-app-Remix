@@ -15,7 +15,7 @@ import (
 )
 
 func ConnectDB(runningEnv string) (*pgxpool.Pool, error) {
-	log.Println("opening connection to database...")
+	log.Println("Opening connection to database...")
 
 	var connStr string
 	if runningEnv == "docker" {
@@ -25,7 +25,7 @@ func ConnectDB(runningEnv string) (*pgxpool.Pool, error) {
 	}
 
 	if connStr == "" {
-		return nil, fmt.Errorf("DATABASE_URL environment variable not set")
+		return nil, fmt.Errorf("DB_URL environment variable not set")
 	}
 
 	dbpool, err := pgxpool.New(context.Background(), connStr)

@@ -13,7 +13,7 @@ SELECT * FROM users WHERE user_id = $1;
 -- name: UpdateUsername :exec
 UPDATE users
 SET username = $1, updated_at = CURRENT_TIMESTAMP
-WHERE id = $2;
+WHERE user_id = $2;
 
 -- name: DeleteUser :exec
-DELETE FROM users WHERE id = $1;
+DELETE FROM users WHERE user_id = $1;
