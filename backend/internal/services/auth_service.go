@@ -4,13 +4,15 @@ import (
 	"context"
 	"errors"
 	"todo-app/internal/db"
-	"todo-app/utils"
+	"todo-app/internal/utils"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthService struct {
-	SqlClient *db.Queries
+	SqlClient      db.WrappedQuerier
+	PasswordHasher PasswordHasher
+	TokenGenerator TokenGenerator
 }
 
 type RegisterRequest struct {
@@ -23,12 +25,12 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
-func NewAuthService(sqlClient *db.Queries) *AuthService {
-	return &AuthService{SqlClient: sqlClient}
+func NewAuthService(sqlClient db.WrappedQuerier, passHasher PasswordHasher, jwter TokenGenerator) *AuthService {
+	return &AuthService{SqlClient: sqlClient, PasswordHasher: passHasher, TokenGenerator: jwter}
 }
 
 func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (db.User, error) {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	hashedPassword, err := s.PasswordHasher.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return db.User{}, err
 	}
@@ -50,7 +52,7 @@ func (s *AuthService) Login(ctx context.Context, req LoginRequest, sessionID str
 		return "", "", errors.New("invalid email or password")
 	}
 
-	if err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+	if err = s.PasswordHasher.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
 		return "", "", errors.New("invalid email or password")
 	}
 
@@ -59,7 +61,7 @@ func (s *AuthService) Login(ctx context.Context, req LoginRequest, sessionID str
 		return "", "", errors.New("failed to convert uuid to string")
 	}
 
-	accessToken, err := utils.GenerateJWT(userIDStr, sessionID)
+	accessToken, err := s.TokenGenerator.GenerateToken(userIDStr, sessionID)
 	if err != nil {
 		return "", "", err
 	}

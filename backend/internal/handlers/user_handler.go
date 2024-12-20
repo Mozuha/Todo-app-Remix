@@ -4,7 +4,7 @@ import (
 	"log"
 	"net/http"
 	"todo-app/internal/services"
-	"todo-app/utils"
+	"todo-app/internal/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgtype"

@@ -4,7 +4,7 @@ import (
 	"log"
 	"todo-app/internal/db"
 	"todo-app/internal/router"
-	"todo-app/utils"
+	"todo-app/internal/utils"
 )
 
 func main() {

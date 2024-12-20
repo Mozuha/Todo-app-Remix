@@ -4,7 +4,7 @@ import (
 	"log"
 	"net/http"
 	"todo-app/internal/services"
-	"todo-app/utils"
+	"todo-app/internal/utils"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"

@@ -8,14 +8,14 @@ import (
 )
 
 type UserService struct {
-	SqlClient *db.Queries
+	SqlClient db.WrappedQuerier
 }
 
 type UpdateUsernameRequest struct {
 	Username string `json:"username" binding:"required"`
 }
 
-func NewUserService(sqlClient *db.Queries) *UserService {
+func NewUserService(sqlClient db.WrappedQuerier) *UserService {
 	return &UserService{SqlClient: sqlClient}
 }
 
