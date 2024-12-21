@@ -1,7 +1,6 @@
 package middlewares
 
 import (
-	"log"
 	"net/http"
 	"todo-app/internal/services"
 
@@ -11,7 +10,7 @@ import (
 
 const BEARER_SCHEMA = "Bearer "
 
-func AuthMiddleware(jwter services.TokenGenerator) gin.HandlerFunc {
+func AuthMiddleware(jwter services.ITokenGenerator) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		// Bearer token will be shown like `Authorization: Bearer <token>` in http header
 
@@ -29,16 +28,12 @@ func AuthMiddleware(jwter services.TokenGenerator) gin.HandlerFunc {
 			ctx.Abort()
 			return
 		}
-		log.Println(token)
-		log.Println(claims)
 
 		// Even if the token is valid, the user cannot be authenticated if there is no associated session
 		// This prevents the user from being authenticated with valid token after logged out
 		session := sessions.Default(ctx)
 		sessionID := session.ID()
 		userID := session.Get("userID")
-		log.Println(claims.SessionID, sessionID)
-		log.Println(claims.UserID, userID)
 		if claims.SessionID != sessionID || claims.UserID != userID {
 			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired session"})
 			ctx.Abort()

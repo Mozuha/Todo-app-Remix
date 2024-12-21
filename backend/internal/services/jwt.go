@@ -21,11 +21,6 @@ type JWTCustomClaims struct {
 	jwt.RegisteredClaims
 }
 
-type TokenGenerator interface {
-	GenerateToken(userID, sessionID string) (string, error)
-	ValidateToken(tokenString string) (*JWTCustomClaims, error)
-}
-
 type JWTer struct{}
 
 func NewJWTer() *JWTer {

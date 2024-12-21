@@ -11,7 +11,7 @@ import (
 )
 
 type UserHandler struct {
-	UserService *services.UserService
+	UserService services.IUserService
 }
 
 type GetMeResponse struct {
@@ -20,7 +20,7 @@ type GetMeResponse struct {
 	Email    string `json:"email"`
 }
 
-func NewUserHandler(userService *services.UserService) *UserHandler {
+func NewUserHandler(userService services.IUserService) *UserHandler {
 	return &UserHandler{UserService: userService}
 }
 

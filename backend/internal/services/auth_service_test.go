@@ -21,8 +21,8 @@ func TestAuthService(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockQueries := mock_db.NewMockWrappedQuerier(ctrl)
-	mockPassHasher := mock_services.NewMockPasswordHasher(ctrl)
-	mockTokenGen := mock_services.NewMockTokenGenerator(ctrl)
+	mockPassHasher := mock_services.NewMockIPasswordHasher(ctrl)
+	mockTokenGen := mock_services.NewMockITokenGenerator(ctrl)
 
 	authService := services.NewAuthService(mockQueries, mockPassHasher, mockTokenGen)
 

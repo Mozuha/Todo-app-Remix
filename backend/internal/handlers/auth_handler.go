@@ -11,7 +11,7 @@ import (
 )
 
 type AuthHandler struct {
-	AuthService *services.AuthService
+	AuthService services.IAuthService
 }
 
 type LoginResponse struct {
@@ -19,7 +19,7 @@ type LoginResponse struct {
 	AccessToken string `json:"access_token"`
 }
 
-func NewAuthHandler(authService *services.AuthService) *AuthHandler {
+func NewAuthHandler(authService services.IAuthService) *AuthHandler {
 	return &AuthHandler{AuthService: authService}
 }
 
@@ -77,7 +77,7 @@ func (h *AuthHandler) Login(ctx *gin.Context) {
 		// session.Options(sessions.Options{MaxAge: -1})
 		if err = session.Save(); err != nil {
 			log.Println(err.Error())
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save session"})
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to log in"})
 			return
 		}
 	}
@@ -85,7 +85,7 @@ func (h *AuthHandler) Login(ctx *gin.Context) {
 	session.Set("userID", userID)
 	if err = session.Save(); err != nil {
 		log.Println(err.Error())
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save session"})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to log in"})
 		return
 	}
 

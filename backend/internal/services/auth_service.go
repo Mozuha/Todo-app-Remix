@@ -11,8 +11,8 @@ import (
 
 type AuthService struct {
 	SqlClient      db.WrappedQuerier
-	PasswordHasher PasswordHasher
-	TokenGenerator TokenGenerator
+	PasswordHasher IPasswordHasher
+	TokenGenerator ITokenGenerator
 }
 
 type RegisterRequest struct {
@@ -25,7 +25,7 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
-func NewAuthService(sqlClient db.WrappedQuerier, passHasher PasswordHasher, jwter TokenGenerator) *AuthService {
+func NewAuthService(sqlClient db.WrappedQuerier, passHasher IPasswordHasher, jwter ITokenGenerator) *AuthService {
 	return &AuthService{SqlClient: sqlClient, PasswordHasher: passHasher, TokenGenerator: jwter}
 }
 
