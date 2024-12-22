@@ -30,7 +30,7 @@ type testSetup struct {
 	context         *gin.Context
 }
 
-func setupTest(t *testing.T, useMockSession bool) *testSetup {
+func setupAuthTest(t *testing.T, useMockSession bool) *testSetup {
 	ctrl := gomock.NewController(t)
 	mockAuthService := mock_services.NewMockIAuthService(ctrl)
 	authHandler := handlers.NewAuthHandler(mockAuthService)
@@ -63,12 +63,6 @@ func setupTest(t *testing.T, useMockSession bool) *testSetup {
 	}
 }
 
-func createRequest(method, path string, body []byte) *http.Request {
-	req := httptest.NewRequest(method, path, bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	return req
-}
-
 func checkSessionHandler(c *gin.Context) {
 	session := sessions.Default(c)
 	userID := session.Get("userID")
@@ -80,21 +74,21 @@ func checkSessionHandler(c *gin.Context) {
 }
 
 type want struct {
-	Status   int
-	RespFile string
+	status   int
+	respFile string
 }
 
 var checkSessionWants = struct {
-	Exist    want
-	NotExist want
+	exist    want
+	notExist want
 }{
-	Exist: want{
-		Status:   http.StatusOK,
-		RespFile: `{"userID": "user-id-123"}`,
+	exist: want{
+		status:   http.StatusOK,
+		respFile: `{"userID": "user-id-123"}`,
 	},
-	NotExist: want{
-		Status:   http.StatusUnauthorized,
-		RespFile: `{"error":"No active session"}`,
+	notExist: want{
+		status:   http.StatusUnauthorized,
+		respFile: `{"error":"No active session"}`,
 	},
 }
 
@@ -109,8 +103,8 @@ func TestAuthHandler_Register(t *testing.T) {
 			name:    "successful registration",
 			reqFile: "testdata/register/201_req.json.golden",
 			want: want{
-				Status:   http.StatusCreated,
-				RespFile: "testdata/register/201_resp.json.golden",
+				status:   http.StatusCreated,
+				respFile: "testdata/register/201_resp.json.golden",
 			},
 			useMockSession: false,
 		},
@@ -118,8 +112,8 @@ func TestAuthHandler_Register(t *testing.T) {
 			name:    "invalid request body",
 			reqFile: "testdata/register/400_req.json.golden",
 			want: want{
-				Status:   http.StatusBadRequest,
-				RespFile: "testdata/register/400_resp.json.golden",
+				status:   http.StatusBadRequest,
+				respFile: "testdata/register/400_resp.json.golden",
 			},
 			useMockSession: false,
 		},
@@ -127,8 +121,8 @@ func TestAuthHandler_Register(t *testing.T) {
 			name:    "user already registered",
 			reqFile: "testdata/register/409_req.json.golden",
 			want: want{
-				Status:   http.StatusConflict,
-				RespFile: "testdata/register/409_resp.json.golden",
+				status:   http.StatusConflict,
+				respFile: "testdata/register/409_resp.json.golden",
 			},
 			useMockSession: false,
 		},
@@ -136,8 +130,8 @@ func TestAuthHandler_Register(t *testing.T) {
 			name:    "internal server error",
 			reqFile: "testdata/register/500_req.json.golden",
 			want: want{
-				Status:   http.StatusInternalServerError,
-				RespFile: "testdata/register/500_resp.json.golden",
+				status:   http.StatusInternalServerError,
+				respFile: "testdata/register/500_resp.json.golden",
 			},
 			useMockSession: false,
 		},
@@ -145,13 +139,13 @@ func TestAuthHandler_Register(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			setup := setupTest(t, tt.useMockSession)
+			setup := setupAuthTest(t, tt.useMockSession)
 			defer setup.ctrl.Finish()
 
-			// AuthService won't be called when request body is invalid
+			// Register service won't be called when request body is invalid
 			if tt.name != "invalid request body" {
 				setup.mockAuthService.EXPECT().Register(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, req services.RegisterRequest) (*db.User, error) {
-					switch tt.want.Status {
+					switch tt.want.status {
 					case http.StatusCreated:
 						return &db.User{}, nil
 					case http.StatusConflict:
@@ -163,11 +157,12 @@ func TestAuthHandler_Register(t *testing.T) {
 				})
 			}
 
-			setup.context.Request = createRequest(http.MethodPost, "/register", testutils.LoadFile(t, tt.reqFile))
+			setup.context.Request = httptest.NewRequest(http.MethodPost, "/register", bytes.NewReader(testutils.LoadFile(t, tt.reqFile)))
+			setup.context.Request.Header.Set("Content-Type", "application/json")
 			setup.router.POST("/register", setup.authHandler.Register)
 			setup.router.ServeHTTP(setup.recorder, setup.context.Request)
 
-			testutils.AssertResponse(t, setup.recorder.Result(), tt.want.Status, testutils.LoadFile(t, tt.want.RespFile))
+			testutils.AssertResponse(t, setup.recorder.Result(), tt.want.status, testutils.LoadFile(t, tt.want.respFile))
 		})
 	}
 }
@@ -184,63 +179,63 @@ func TestAuthHandler_Login(t *testing.T) {
 			name:    "successful login",
 			reqFile: "testdata/login/200_req.json.golden",
 			want: want{
-				Status:   http.StatusOK,
-				RespFile: "testdata/login/200_resp.json.golden",
+				status:   http.StatusOK,
+				respFile: "testdata/login/200_resp.json.golden",
 			},
-			checkSessionWant: checkSessionWants.Exist,
+			checkSessionWant: checkSessionWants.exist,
 			useMockSession:   false,
 		},
 		{
 			name:    "invalid request body",
 			reqFile: "testdata/login/400_req.json.golden",
 			want: want{
-				Status:   http.StatusBadRequest,
-				RespFile: "testdata/login/400_resp.json.golden",
+				status:   http.StatusBadRequest,
+				respFile: "testdata/login/400_resp.json.golden",
 			},
-			checkSessionWant: checkSessionWants.NotExist,
+			checkSessionWant: checkSessionWants.notExist,
 			useMockSession:   false,
 		},
 		{
 			name:    "invalid email or password",
 			reqFile: "testdata/login/401_req.json.golden",
 			want: want{
-				Status:   http.StatusUnauthorized,
-				RespFile: "testdata/login/401_resp.json.golden",
+				status:   http.StatusUnauthorized,
+				respFile: "testdata/login/401_resp.json.golden",
 			},
-			checkSessionWant: checkSessionWants.NotExist,
+			checkSessionWant: checkSessionWants.notExist,
 			useMockSession:   false,
 		},
 		{
 			name:    "internal server error",
 			reqFile: "testdata/login/500_req.json.golden",
 			want: want{
-				Status:   http.StatusInternalServerError,
-				RespFile: "testdata/login/500_resp.json.golden",
+				status:   http.StatusInternalServerError,
+				respFile: "testdata/login/500_resp.json.golden",
 			},
-			checkSessionWant: checkSessionWants.NotExist,
+			checkSessionWant: checkSessionWants.notExist,
 			useMockSession:   false,
 		},
 		{
 			name:    "failed to save session",
 			reqFile: "testdata/login/500_req.json.golden",
 			want: want{
-				Status:   http.StatusInternalServerError,
-				RespFile: "testdata/login/500_resp.json.golden",
+				status:   http.StatusInternalServerError,
+				respFile: "testdata/login/500_resp.json.golden",
 			},
-			checkSessionWant: checkSessionWants.NotExist,
+			checkSessionWant: checkSessionWants.notExist,
 			useMockSession:   true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			setup := setupTest(t, tt.useMockSession)
+			setup := setupAuthTest(t, tt.useMockSession)
 			defer setup.ctrl.Finish()
 
-			// LoginService won't be called when request body is invalid
+			// Login service won't be called when request body is invalid
 			if tt.name != "invalid request body" {
 				setup.mockAuthService.EXPECT().Login(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, req services.LoginRequest, sessionID string) (string, string, error) {
-					switch tt.want.Status {
+					switch tt.want.status {
 					case http.StatusOK:
 						return "user-id-123", "access-token-123", nil
 					case http.StatusUnauthorized:
@@ -255,11 +250,12 @@ func TestAuthHandler_Login(t *testing.T) {
 				})
 			}
 
-			setup.context.Request = createRequest(http.MethodPost, "/login", testutils.LoadFile(t, tt.reqFile))
+			setup.context.Request = httptest.NewRequest(http.MethodPost, "/login", bytes.NewReader(testutils.LoadFile(t, tt.reqFile)))
+			setup.context.Request.Header.Set("Content-Type", "application/json")
 			setup.router.POST("/login", setup.authHandler.Login)
 			setup.router.ServeHTTP(setup.recorder, setup.context.Request)
 
-			testutils.AssertResponse(t, setup.recorder.Result(), tt.want.Status, testutils.LoadFile(t, tt.want.RespFile))
+			testutils.AssertResponse(t, setup.recorder.Result(), tt.want.status, testutils.LoadFile(t, tt.want.respFile))
 
 			// Verify session
 			// Simulate the check-session request with the session cookie
@@ -273,7 +269,7 @@ func TestAuthHandler_Login(t *testing.T) {
 			setup.router.GET("/check-session", checkSessionHandler)
 			setup.router.ServeHTTP(setup.recorder, setup.context.Request)
 
-			testutils.AssertResponse(t, setup.recorder.Result(), tt.checkSessionWant.Status, []byte(tt.checkSessionWant.RespFile))
+			testutils.AssertResponse(t, setup.recorder.Result(), tt.checkSessionWant.status, []byte(tt.checkSessionWant.respFile))
 		})
 	}
 }
@@ -288,33 +284,34 @@ func TestAuthHandler_Logout(t *testing.T) {
 		{
 			name: "successful logout",
 			want: want{
-				Status:   http.StatusOK,
-				RespFile: "testdata/logout/200_resp.json.golden",
+				status:   http.StatusOK,
+				respFile: "testdata/logout/200_resp.json.golden",
 			},
-			checkSessionWant: checkSessionWants.NotExist,
+			checkSessionWant: checkSessionWants.notExist,
 			useMockSession:   false,
 		},
 		{
 			name: "failed to save session",
 			want: want{
-				Status:   http.StatusInternalServerError,
-				RespFile: "testdata/logout/500_resp.json.golden",
+				status:   http.StatusInternalServerError,
+				respFile: "testdata/logout/500_resp.json.golden",
 			},
-			checkSessionWant: checkSessionWants.NotExist,
+			checkSessionWant: checkSessionWants.notExist,
 			useMockSession:   true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			setup := setupTest(t, tt.useMockSession)
+			setup := setupAuthTest(t, tt.useMockSession)
 			defer setup.ctrl.Finish()
 
-			setup.context.Request = createRequest(http.MethodPost, "/logout", nil)
+			setup.context.Request = httptest.NewRequest(http.MethodPost, "/logout", nil)
+			setup.context.Request.Header.Set("Content-Type", "application/json")
 			setup.router.POST("/logout", setup.authHandler.Logout)
 			setup.router.ServeHTTP(setup.recorder, setup.context.Request)
 
-			testutils.AssertResponse(t, setup.recorder.Result(), tt.want.Status, testutils.LoadFile(t, tt.want.RespFile))
+			testutils.AssertResponse(t, setup.recorder.Result(), tt.want.status, testutils.LoadFile(t, tt.want.respFile))
 
 			// Verify session
 			cookies := setup.recorder.Result().Cookies()
@@ -327,7 +324,7 @@ func TestAuthHandler_Logout(t *testing.T) {
 			setup.router.GET("/check-session", checkSessionHandler)
 			setup.router.ServeHTTP(setup.recorder, setup.context.Request)
 
-			testutils.AssertResponse(t, setup.recorder.Result(), tt.checkSessionWant.Status, []byte(tt.checkSessionWant.RespFile))
+			testutils.AssertResponse(t, setup.recorder.Result(), tt.checkSessionWant.status, []byte(tt.checkSessionWant.respFile))
 		})
 	}
 }
