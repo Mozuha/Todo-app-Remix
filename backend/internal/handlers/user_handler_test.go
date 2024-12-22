@@ -31,7 +31,7 @@ type userTestSetup struct {
 var uIDStr = "00010203-0405-0607-0809-0a0b0c0d0e0f"
 var uIDUuid, _ = utils.StringToUUID(uIDStr)
 
-func setupUserTest(t *testing.T) *userTestSetup {
+func setupUserTest(t *testing.T, setUserIDInCtx bool) *userTestSetup {
 	ctrl := gomock.NewController(t)
 	mockUserService := mock_services.NewMockIUserService(ctrl)
 	userHandler := handlers.NewUserHandler(mockUserService)
@@ -40,12 +40,14 @@ func setupUserTest(t *testing.T) *userTestSetup {
 	w := httptest.NewRecorder()
 	ctx, r := gin.CreateTestContext(w)
 
-	// Set a mock userID in the context for testing
-	ctx.Set("userID", uIDStr)
-	r.Use(func(c *gin.Context) {
-		c.Set("userID", uIDStr)
-		c.Next()
-	})
+	if setUserIDInCtx {
+		// Set a mock userID in the context for testing
+		ctx.Set("userID", uIDStr)
+		r.Use(func(c *gin.Context) {
+			c.Set("userID", uIDStr)
+			c.Next()
+		})
+	}
 
 	return &userTestSetup{
 		ctrl:            ctrl,
@@ -59,43 +61,57 @@ func setupUserTest(t *testing.T) *userTestSetup {
 
 func TestUserHandler_GetMe(t *testing.T) {
 	tests := []struct {
-		name string
-		want want
+		name           string
+		want           want
+		setUserIDInCtx bool
 	}{
 		{
 			name: "successful get user",
 			want: want{
 				status:   http.StatusOK,
-				respFile: "testdata/getme/200_resp.json.golden",
+				respFile: "testdata/get_me/200_resp.json.golden",
 			},
+			setUserIDInCtx: true,
+		},
+		{
+			name: "failed to get userID from context",
+			want: want{
+				status:   http.StatusUnauthorized,
+				respFile: "testdata/get_me/401_resp.json.golden",
+			},
+			setUserIDInCtx: false,
 		},
 		{
 			name: "failed to get user",
 			want: want{
 				status:   http.StatusInternalServerError,
-				respFile: "testdata/getme/500_resp.json.golden",
+				respFile: "testdata/get_me/500_resp.json.golden",
 			},
+			setUserIDInCtx: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			setup := setupUserTest(t)
+			setup := setupUserTest(t, tt.setUserIDInCtx)
 			defer setup.ctrl.Finish()
 
-			setup.mockUserService.EXPECT().GetMe(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, userID pgtype.UUID) (*db.User, error) {
-				switch tt.want.status {
-				case http.StatusOK:
-					return &db.User{UserID: uIDUuid, Username: "testuser", Email: "test@example.com"}, nil
-				case http.StatusInternalServerError:
-					return nil, errors.New("user not found")
-				}
-				return nil, errors.New("error from mock")
-			})
+			// GetMe service won't be called when userID is not in context
+			if tt.setUserIDInCtx {
+				setup.mockUserService.EXPECT().GetMe(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, userID pgtype.UUID) (*db.User, error) {
+					switch tt.want.status {
+					case http.StatusOK:
+						return &db.User{UserID: uIDUuid, Username: "testuser", Email: "test@example.com"}, nil
+					case http.StatusInternalServerError:
+						return nil, errors.New("user not found")
+					}
+					return nil, errors.New("error from mock")
+				})
+			}
 
-			setup.context.Request = httptest.NewRequest(http.MethodGet, "/users/me", nil)
+			setup.context.Request = httptest.NewRequest(http.MethodGet, "/me", nil)
 			setup.context.Request.Header.Set("Content-Type", "application/json")
-			setup.router.GET("/users/me", setup.userHandler.GetMe)
+			setup.router.GET("/me", setup.userHandler.GetMe)
 			setup.router.ServeHTTP(setup.recorder, setup.context.Request)
 
 			testutils.AssertResponse(t, setup.recorder.Result(), tt.want.status, testutils.LoadFile(t, tt.want.respFile))
@@ -103,45 +119,58 @@ func TestUserHandler_GetMe(t *testing.T) {
 	}
 }
 
-func TestUserHandler_UpdateUsername(t *testing.T) {
+func TestUserHandler_UpdateMyUsername(t *testing.T) {
 	tests := []struct {
-		name    string
-		reqFile string
-		want    want
+		name           string
+		reqFile        string
+		want           want
+		setUserIDInCtx bool
 	}{
 		{
 			name:    "successful update username",
-			reqFile: "testdata/update_username/200_req.json.golden",
+			reqFile: "testdata/update_my_username/200_req.json.golden",
 			want: want{
 				status:   http.StatusOK,
-				respFile: "testdata/update_username/200_resp.json.golden",
+				respFile: "testdata/update_my_username/200_resp.json.golden",
 			},
+			setUserIDInCtx: true,
+		},
+		{
+			name:    "failed to get userID from context",
+			reqFile: "testdata/update_my_username/401_req.json.golden",
+			want: want{
+				status:   http.StatusUnauthorized,
+				respFile: "testdata/update_my_username/401_resp.json.golden",
+			},
+			setUserIDInCtx: false,
 		},
 		{
 			name:    "invalid request body",
-			reqFile: "testdata/update_username/400_req.json.golden",
+			reqFile: "testdata/update_my_username/400_req.json.golden",
 			want: want{
 				status:   http.StatusBadRequest,
-				respFile: "testdata/update_username/400_resp.json.golden",
+				respFile: "testdata/update_my_username/400_resp.json.golden",
 			},
+			setUserIDInCtx: true,
 		},
 		{
 			name:    "internal server error",
-			reqFile: "testdata/update_username/500_req.json.golden",
+			reqFile: "testdata/update_my_username/500_req.json.golden",
 			want: want{
 				status:   http.StatusInternalServerError,
-				respFile: "testdata/update_username/500_resp.json.golden",
+				respFile: "testdata/update_my_username/500_resp.json.golden",
 			},
+			setUserIDInCtx: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			setup := setupUserTest(t)
+			setup := setupUserTest(t, tt.setUserIDInCtx)
 			defer setup.ctrl.Finish()
 
-			// UpdateUsername service won't be called when request body is invalid
-			if tt.name != "invalid request body" {
+			// UpdateUsername service won't be called when userID is not in context or request body is invalid
+			if tt.setUserIDInCtx && tt.name != "invalid request body" {
 				setup.mockUserService.EXPECT().UpdateUsername(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, userID pgtype.UUID, req services.UpdateUsernameRequest) error {
 					switch tt.want.status {
 					case http.StatusOK:
@@ -153,9 +182,9 @@ func TestUserHandler_UpdateUsername(t *testing.T) {
 				})
 			}
 
-			setup.context.Request = httptest.NewRequest(http.MethodPut, "/users/username", bytes.NewReader(testutils.LoadFile(t, tt.reqFile)))
+			setup.context.Request = httptest.NewRequest(http.MethodPut, "/me/username", bytes.NewReader(testutils.LoadFile(t, tt.reqFile)))
 			setup.context.Request.Header.Set("Content-Type", "application/json")
-			setup.router.PUT("/users/username", setup.userHandler.UpdateUsername)
+			setup.router.PUT("/me/username", setup.userHandler.UpdateMyUsername)
 			setup.router.ServeHTTP(setup.recorder, setup.context.Request)
 
 			testutils.AssertResponse(t, setup.recorder.Result(), tt.want.status, testutils.LoadFile(t, tt.want.respFile))
@@ -163,45 +192,59 @@ func TestUserHandler_UpdateUsername(t *testing.T) {
 	}
 }
 
-func TestUserHandler_DeleteUser(t *testing.T) {
+func TestUserHandler_DeleteMe(t *testing.T) {
 	tests := []struct {
-		name string
-		want want
+		name           string
+		want           want
+		setUserIDInCtx bool
 	}{
 		{
 			name: "successful delete user",
 			want: want{
 				status:   http.StatusOK,
-				respFile: "testdata/delete_user/200_resp.json.golden",
+				respFile: "testdata/delete_me/200_resp.json.golden",
 			},
+			setUserIDInCtx: true,
+		},
+		{
+			name: "failed to get userID from context",
+			want: want{
+				status:   http.StatusUnauthorized,
+				respFile: "testdata/delete_me/401_resp.json.golden",
+			},
+			setUserIDInCtx: false,
 		},
 		{
 			name: "internal server error",
 			want: want{
 				status:   http.StatusInternalServerError,
-				respFile: "testdata/delete_user/500_resp.json.golden",
+				respFile: "testdata/delete_me/500_resp.json.golden",
 			},
+			setUserIDInCtx: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			setup := setupUserTest(t)
+			setup := setupUserTest(t, tt.setUserIDInCtx)
 			defer setup.ctrl.Finish()
 
-			setup.mockUserService.EXPECT().DeleteUser(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, userID pgtype.UUID) error {
-				switch tt.want.status {
-				case http.StatusOK:
-					return nil
-				case http.StatusInternalServerError:
-					return errors.New("unexpected error")
-				}
-				return errors.New("error from mock")
-			})
+			// DeleteUser service won't be called when userID is not in context
+			if tt.setUserIDInCtx {
+				setup.mockUserService.EXPECT().DeleteUser(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, userID pgtype.UUID) error {
+					switch tt.want.status {
+					case http.StatusOK:
+						return nil
+					case http.StatusInternalServerError:
+						return errors.New("unexpected error")
+					}
+					return errors.New("error from mock")
+				})
+			}
 
-			setup.context.Request = httptest.NewRequest(http.MethodDelete, "/users/me", nil)
+			setup.context.Request = httptest.NewRequest(http.MethodDelete, "/me", nil)
 			setup.context.Request.Header.Set("Content-Type", "application/json")
-			setup.router.DELETE("/users/me", setup.userHandler.DeleteUser)
+			setup.router.DELETE("/me", setup.userHandler.DeleteMe)
 			setup.router.ServeHTTP(setup.recorder, setup.context.Request)
 
 			testutils.AssertResponse(t, setup.recorder.Result(), tt.want.status, testutils.LoadFile(t, tt.want.respFile))

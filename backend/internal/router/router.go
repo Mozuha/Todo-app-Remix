@@ -34,11 +34,11 @@ func SetupRouter(sqlClient *db.Queries, redisStore redis.Store) *gin.Engine {
 		v1.POST("/login", authHandler.Login)
 		v1.POST("/logout", authMiddleware, authHandler.Logout)
 
-		users := v1.Group("/users", authMiddleware)
+		users := v1.Group("/me", authMiddleware)
 		{
-			users.GET("/me", userHandler.GetMe)
-			users.PATCH("/username", userHandler.UpdateUsername)
-			users.DELETE("/:id", userHandler.DeleteUser)
+			users.GET("/", userHandler.GetMe)
+			users.PATCH("/username", userHandler.UpdateMyUsername)
+			users.DELETE("/", userHandler.DeleteMe)
 		}
 
 		// todos := v1.Group("/todos", authMiddleware)
