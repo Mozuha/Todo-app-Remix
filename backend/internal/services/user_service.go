@@ -19,8 +19,9 @@ func NewUserService(sqlClient db.WrappedQuerier) *UserService {
 	return &UserService{SqlClient: sqlClient}
 }
 
-func (s *UserService) GetMe(ctx context.Context, userID pgtype.UUID) (db.User, error) {
-	return s.SqlClient.GetUserByUserID(ctx, userID)
+func (s *UserService) GetMe(ctx context.Context, userID pgtype.UUID) (*db.User, error) {
+	user, err := s.SqlClient.GetUserByUserID(ctx, userID)
+	return &user, err
 }
 
 func (s *UserService) UpdateUsername(ctx context.Context, userID pgtype.UUID, req UpdateUsernameRequest) error {

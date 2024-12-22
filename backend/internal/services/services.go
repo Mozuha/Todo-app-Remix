@@ -8,12 +8,12 @@ import (
 )
 
 type IAuthService interface {
-	Register(ctx context.Context, req RegisterRequest) (db.User, error)
+	Register(ctx context.Context, req RegisterRequest) (*db.User, error)
 	Login(ctx context.Context, req LoginRequest, sessionID string) (string, string, error)
 }
 
 type IUserService interface {
-	GetMe(ctx context.Context, userID pgtype.UUID) (db.User, error)
+	GetMe(ctx context.Context, userID pgtype.UUID) (*db.User, error)
 	UpdateUsername(ctx context.Context, userID pgtype.UUID, req UpdateUsernameRequest) error
 	DeleteUser(ctx context.Context, userID pgtype.UUID) error
 }

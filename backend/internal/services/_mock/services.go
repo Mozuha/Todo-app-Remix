@@ -60,10 +60,10 @@ func (mr *MockIAuthServiceMockRecorder) Login(ctx, req, sessionID any) *gomock.C
 }
 
 // Register mocks base method.
-func (m *MockIAuthService) Register(ctx context.Context, req services.RegisterRequest) (db.User, error) {
+func (m *MockIAuthService) Register(ctx context.Context, req services.RegisterRequest) (*db.User, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Register", ctx, req)
-	ret0, _ := ret[0].(db.User)
+	ret0, _ := ret[0].(*db.User)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -110,6 +110,21 @@ func (m *MockIUserService) DeleteUser(ctx context.Context, userID pgtype.UUID) e
 func (mr *MockIUserServiceMockRecorder) DeleteUser(ctx, userID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteUser", reflect.TypeOf((*MockIUserService)(nil).DeleteUser), ctx, userID)
+}
+
+// GetMe mocks base method.
+func (m *MockIUserService) GetMe(ctx context.Context, userID pgtype.UUID) (*db.User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMe", ctx, userID)
+	ret0, _ := ret[0].(*db.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetMe indicates an expected call of GetMe.
+func (mr *MockIUserServiceMockRecorder) GetMe(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMe", reflect.TypeOf((*MockIUserService)(nil).GetMe), ctx, userID)
 }
 
 // UpdateUsername mocks base method.

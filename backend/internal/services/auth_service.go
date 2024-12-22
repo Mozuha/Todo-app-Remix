@@ -29,10 +29,10 @@ func NewAuthService(sqlClient db.WrappedQuerier, passHasher IPasswordHasher, jwt
 	return &AuthService{SqlClient: sqlClient, PasswordHasher: passHasher, TokenGenerator: jwter}
 }
 
-func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (db.User, error) {
+func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (*db.User, error) {
 	hashedPassword, err := s.PasswordHasher.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return db.User{}, err
+		return nil, err
 	}
 
 	user, err := s.SqlClient.CreateUser(ctx, db.CreateUserParams{
@@ -40,10 +40,10 @@ func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (db.Use
 		PasswordHash: string(hashedPassword),
 	})
 	if err != nil {
-		return db.User{}, err
+		return nil, err
 	}
 
-	return user, err
+	return &user, err
 }
 
 func (s *AuthService) Login(ctx context.Context, req LoginRequest, sessionID string) (string, string, error) {

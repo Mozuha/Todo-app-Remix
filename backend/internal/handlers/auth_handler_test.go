@@ -2,7 +2,7 @@ package handlers_test
 
 import (
 	"bytes"
-	"encoding/json"
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -12,14 +12,62 @@ import (
 	middlewares_mock "todo-app/internal/middlewares/_mock"
 	"todo-app/internal/services"
 	mock_services "todo-app/internal/services/_mock"
+	"todo-app/internal/utils/testutils"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/memstore"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 )
+
+type testSetup struct {
+	ctrl            *gomock.Controller
+	mockAuthService *mock_services.MockIAuthService
+	authHandler     *handlers.AuthHandler
+	router          *gin.Engine
+	recorder        *httptest.ResponseRecorder
+	context         *gin.Context
+}
+
+func setupTest(t *testing.T, useMockSession bool) *testSetup {
+	ctrl := gomock.NewController(t)
+	mockAuthService := mock_services.NewMockIAuthService(ctrl)
+	authHandler := handlers.NewAuthHandler(mockAuthService)
+	gin.SetMode(gin.TestMode)
+
+	w := httptest.NewRecorder()
+	ctx, r := gin.CreateTestContext(w)
+
+	if useMockSession {
+		mockSession := middlewares_mock.NewMockSession(errors.New("session save failed"))
+
+		// Use middleware to inject the mock session
+		r.Use(func(c *gin.Context) {
+			// Override the default session with our mock
+			c.Set(sessions.DefaultKey, mockSession)
+			c.Next()
+		})
+	} else {
+		store := memstore.NewStore([]byte("secret"))
+		r.Use(sessions.Sessions("mysession", store))
+	}
+
+	return &testSetup{
+		ctrl:            ctrl,
+		mockAuthService: mockAuthService,
+		authHandler:     authHandler,
+		router:          r,
+		recorder:        w,
+		context:         ctx,
+	}
+}
+
+func createRequest(method, path string, body []byte) *http.Request {
+	req := httptest.NewRequest(method, path, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	return req
+}
 
 func checkSessionHandler(c *gin.Context) {
 	session := sessions.Default(c)
@@ -31,335 +79,255 @@ func checkSessionHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"userID": userID})
 }
 
+type want struct {
+	Status   int
+	RespFile string
+}
+
+var checkSessionWants = struct {
+	Exist    want
+	NotExist want
+}{
+	Exist: want{
+		Status:   http.StatusOK,
+		RespFile: `{"userID": "user-id-123"}`,
+	},
+	NotExist: want{
+		Status:   http.StatusUnauthorized,
+		RespFile: `{"error":"No active session"}`,
+	},
+}
+
 func TestAuthHandler_Register(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	tests := []struct {
+		name           string
+		reqFile        string
+		want           want
+		useMockSession bool
+	}{
+		{
+			name:    "successful registration",
+			reqFile: "testdata/register/201_req.json.golden",
+			want: want{
+				Status:   http.StatusCreated,
+				RespFile: "testdata/register/201_resp.json.golden",
+			},
+			useMockSession: false,
+		},
+		{
+			name:    "invalid request body",
+			reqFile: "testdata/register/400_req.json.golden",
+			want: want{
+				Status:   http.StatusBadRequest,
+				RespFile: "testdata/register/400_resp.json.golden",
+			},
+			useMockSession: false,
+		},
+		{
+			name:    "user already registered",
+			reqFile: "testdata/register/409_req.json.golden",
+			want: want{
+				Status:   http.StatusConflict,
+				RespFile: "testdata/register/409_resp.json.golden",
+			},
+			useMockSession: false,
+		},
+		{
+			name:    "internal server error",
+			reqFile: "testdata/register/500_req.json.golden",
+			want: want{
+				Status:   http.StatusInternalServerError,
+				RespFile: "testdata/register/500_resp.json.golden",
+			},
+			useMockSession: false,
+		},
+	}
 
-	mockAuthService := mock_services.NewMockIAuthService(ctrl)
-	authHandler := handlers.NewAuthHandler(mockAuthService)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setup := setupTest(t, tt.useMockSession)
+			defer setup.ctrl.Finish()
 
-	gin.SetMode(gin.TestMode)
+			// AuthService won't be called when request body is invalid
+			if tt.name != "invalid request body" {
+				setup.mockAuthService.EXPECT().Register(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, req services.RegisterRequest) (*db.User, error) {
+					switch tt.want.Status {
+					case http.StatusCreated:
+						return &db.User{}, nil
+					case http.StatusConflict:
+						return nil, &pgconn.PgError{Code: "23505"}
+					case http.StatusInternalServerError:
+						return nil, errors.New("unexpected error")
+					}
+					return nil, errors.New("error from mock")
+				})
+			}
 
-	t.Run("successful registration", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		ctx, r := gin.CreateTestContext(w)
+			setup.context.Request = createRequest(http.MethodPost, "/register", testutils.LoadFile(t, tt.reqFile))
+			setup.router.POST("/register", setup.authHandler.Register)
+			setup.router.ServeHTTP(setup.recorder, setup.context.Request)
 
-		reqBody := `{"email":"test@example.com","password":"securepassword"}`
-		ctx.Request = httptest.NewRequest(http.MethodPost, "/register", bytes.NewBufferString(reqBody))
-		ctx.Request.Header.Set("Content-Type", "application/json")
-
-		mockAuthService.EXPECT().Register(gomock.Any(), services.RegisterRequest{
-			Email:    "test@example.com",
-			Password: "securepassword",
-		}).Return(db.User{}, nil)
-
-		r.POST("/register", authHandler.Register)
-		r.ServeHTTP(w, ctx.Request)
-
-		assert.Equal(t, http.StatusCreated, w.Code)
-		assert.JSONEq(t, `{"message":"User registered"}`, w.Body.String())
-	})
-
-	t.Run("invalid request body", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		ctx, r := gin.CreateTestContext(w)
-
-		reqBody := `{"email":"invalid-email"}`
-		ctx.Request = httptest.NewRequest(http.MethodPost, "/register", bytes.NewBufferString(reqBody))
-		ctx.Request.Header.Set("Content-Type", "application/json")
-
-		r.POST("/register", authHandler.Register)
-		r.ServeHTTP(w, ctx.Request)
-
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-		assert.JSONEq(t, `{"error":"Invalid request"}`, w.Body.String())
-	})
-
-	t.Run("user already registered", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		ctx, r := gin.CreateTestContext(w)
-
-		reqBody := `{"email":"test@example.com","password":"securepassword"}`
-		ctx.Request = httptest.NewRequest(http.MethodPost, "/register", bytes.NewBufferString(reqBody))
-		ctx.Request.Header.Set("Content-Type", "application/json")
-
-		mockAuthService.EXPECT().Register(gomock.Any(), services.RegisterRequest{
-			Email:    "test@example.com",
-			Password: "securepassword",
-		}).Return(db.User{}, &pgconn.PgError{Code: "23505"})
-
-		r.POST("/register", authHandler.Register)
-		r.ServeHTTP(w, ctx.Request)
-
-		assert.Equal(t, http.StatusConflict, w.Code)
-		assert.JSONEq(t, `{"error":"User already registered"}`, w.Body.String())
-	})
-
-	t.Run("internal server error", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		ctx, r := gin.CreateTestContext(w)
-
-		reqBody := `{"email":"test@example.com","password":"securepassword"}`
-		ctx.Request = httptest.NewRequest(http.MethodPost, "/register", bytes.NewBufferString(reqBody))
-		ctx.Request.Header.Set("Content-Type", "application/json")
-
-		mockAuthService.EXPECT().Register(gomock.Any(), services.RegisterRequest{
-			Email:    "test@example.com",
-			Password: "securepassword",
-		}).Return(db.User{}, errors.New("unexpected error"))
-
-		r.POST("/register", authHandler.Register)
-		r.ServeHTTP(w, ctx.Request)
-
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
-		assert.JSONEq(t, `{"error":"Failed to register user"}`, w.Body.String())
-	})
+			testutils.AssertResponse(t, setup.recorder.Result(), tt.want.Status, testutils.LoadFile(t, tt.want.RespFile))
+		})
+	}
 }
 
 func TestAuthHandler_Login(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	tests := []struct {
+		name             string
+		reqFile          string
+		want             want
+		checkSessionWant want
+		useMockSession   bool
+	}{
+		{
+			name:    "successful login",
+			reqFile: "testdata/login/200_req.json.golden",
+			want: want{
+				Status:   http.StatusOK,
+				RespFile: "testdata/login/200_resp.json.golden",
+			},
+			checkSessionWant: checkSessionWants.Exist,
+			useMockSession:   false,
+		},
+		{
+			name:    "invalid request body",
+			reqFile: "testdata/login/400_req.json.golden",
+			want: want{
+				Status:   http.StatusBadRequest,
+				RespFile: "testdata/login/400_resp.json.golden",
+			},
+			checkSessionWant: checkSessionWants.NotExist,
+			useMockSession:   false,
+		},
+		{
+			name:    "invalid email or password",
+			reqFile: "testdata/login/401_req.json.golden",
+			want: want{
+				Status:   http.StatusUnauthorized,
+				RespFile: "testdata/login/401_resp.json.golden",
+			},
+			checkSessionWant: checkSessionWants.NotExist,
+			useMockSession:   false,
+		},
+		{
+			name:    "internal server error",
+			reqFile: "testdata/login/500_req.json.golden",
+			want: want{
+				Status:   http.StatusInternalServerError,
+				RespFile: "testdata/login/500_resp.json.golden",
+			},
+			checkSessionWant: checkSessionWants.NotExist,
+			useMockSession:   false,
+		},
+		{
+			name:    "failed to save session",
+			reqFile: "testdata/login/500_req.json.golden",
+			want: want{
+				Status:   http.StatusInternalServerError,
+				RespFile: "testdata/login/500_resp.json.golden",
+			},
+			checkSessionWant: checkSessionWants.NotExist,
+			useMockSession:   true,
+		},
+	}
 
-	mockAuthService := mock_services.NewMockIAuthService(ctrl)
-	authHandler := handlers.NewAuthHandler(mockAuthService)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setup := setupTest(t, tt.useMockSession)
+			defer setup.ctrl.Finish()
 
-	gin.SetMode(gin.TestMode)
+			// LoginService won't be called when request body is invalid
+			if tt.name != "invalid request body" {
+				setup.mockAuthService.EXPECT().Login(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, req services.LoginRequest, sessionID string) (string, string, error) {
+					switch tt.want.Status {
+					case http.StatusOK:
+						return "user-id-123", "access-token-123", nil
+					case http.StatusUnauthorized:
+						return "", "", errors.New("invalid email or password")
+					case http.StatusInternalServerError:
+						if tt.name == "failed to save session" {
+							return "user-id-123", "access-token-123", nil
+						}
+						return "", "", errors.New("unexpected error")
+					}
+					return "", "", errors.New("error from mock")
+				})
+			}
 
-	t.Run("successful login", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		ctx, r := gin.CreateTestContext(w)
+			setup.context.Request = createRequest(http.MethodPost, "/login", testutils.LoadFile(t, tt.reqFile))
+			setup.router.POST("/login", setup.authHandler.Login)
+			setup.router.ServeHTTP(setup.recorder, setup.context.Request)
 
-		reqBody := `{"email":"test@example.com","password":"securepassword"}`
-		ctx.Request = httptest.NewRequest(http.MethodPost, "/login", bytes.NewBufferString(reqBody))
-		ctx.Request.Header.Set("Content-Type", "application/json")
+			testutils.AssertResponse(t, setup.recorder.Result(), tt.want.Status, testutils.LoadFile(t, tt.want.RespFile))
 
-		store := memstore.NewStore([]byte("secret"))
-		r.Use(sessions.Sessions("mysession", store))
+			// Verify session
+			// Simulate the check-session request with the session cookie
+			cookies := setup.recorder.Result().Cookies()
+			setup.recorder = httptest.NewRecorder()
+			setup.context.Request = httptest.NewRequest(http.MethodGet, "/check-session", nil)
+			for _, cookie := range cookies {
+				setup.context.Request.AddCookie(cookie) // Pass all cookies from the login response
+			}
 
-		mockAuthService.EXPECT().Login(gomock.Any(), services.LoginRequest{
-			Email:    "test@example.com",
-			Password: "securepassword",
-		}, gomock.Any()).Return("user-id-123", "access-token-123", nil)
+			setup.router.GET("/check-session", checkSessionHandler)
+			setup.router.ServeHTTP(setup.recorder, setup.context.Request)
 
-		r.POST("/login", authHandler.Login)
-		r.ServeHTTP(w, ctx.Request)
-
-		assert.Equal(t, http.StatusOK, w.Code)
-
-		var resp handlers.LoginResponse
-		json.Unmarshal(w.Body.Bytes(), &resp)
-		assert.Equal(t, "user-id-123", resp.UserID)
-		assert.Equal(t, "access-token-123", resp.AccessToken)
-
-		// Verify session
-		// Capture the session cookie from the response
-		cookies := w.Result().Cookies()
-
-		// Simulate the check-session request with the session cookie
-		w = httptest.NewRecorder()
-		ctx.Request = httptest.NewRequest(http.MethodGet, "/check-session", nil)
-		for _, cookie := range cookies {
-			ctx.Request.AddCookie(cookie) // Pass all cookies from the login response
-		}
-
-		r.GET("/check-session", checkSessionHandler)
-		r.ServeHTTP(w, ctx.Request)
-
-		assert.Equal(t, http.StatusOK, w.Code)
-		var sessionResp map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &sessionResp)
-		assert.Equal(t, "user-id-123", sessionResp["userID"])
-	})
-
-	t.Run("invalid request body", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		ctx, r := gin.CreateTestContext(w)
-
-		reqBody := `{"email":"invalid-email"}`
-		ctx.Request = httptest.NewRequest(http.MethodPost, "/login", bytes.NewBufferString(reqBody))
-		ctx.Request.Header.Set("Content-Type", "application/json")
-
-		store := memstore.NewStore([]byte("secret"))
-		r.Use(sessions.Sessions("mysession", store))
-
-		r.POST("/login", authHandler.Login)
-		r.ServeHTTP(w, ctx.Request)
-
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-		assert.JSONEq(t, `{"error":"Invalid request"}`, w.Body.String())
-
-		cookies := w.Result().Cookies()
-		w = httptest.NewRecorder()
-		ctx.Request = httptest.NewRequest(http.MethodGet, "/check-session", nil)
-		for _, cookie := range cookies {
-			ctx.Request.AddCookie(cookie)
-		}
-
-		r.GET("/check-session", checkSessionHandler)
-		r.ServeHTTP(w, ctx.Request)
-
-		assert.Equal(t, http.StatusUnauthorized, w.Code)
-		assert.JSONEq(t, `{"error":"No active session"}`, w.Body.String())
-	})
-
-	t.Run("invalid email or password", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		ctx, r := gin.CreateTestContext(w)
-
-		reqBody := `{"email":"test@example.com","password":"wrongpassword"}`
-		ctx.Request = httptest.NewRequest(http.MethodPost, "/login", bytes.NewBufferString(reqBody))
-		ctx.Request.Header.Set("Content-Type", "application/json")
-
-		store := memstore.NewStore([]byte("secret"))
-		r.Use(sessions.Sessions("mysession", store))
-
-		mockAuthService.EXPECT().Login(gomock.Any(), services.LoginRequest{
-			Email:    "test@example.com",
-			Password: "wrongpassword",
-		}, gomock.Any()).Return("", "", errors.New("invalid email or password"))
-
-		r.POST("/login", authHandler.Login)
-		r.ServeHTTP(w, ctx.Request)
-
-		assert.Equal(t, http.StatusUnauthorized, w.Code)
-		assert.JSONEq(t, `{"error":"Invalid email or password"}`, w.Body.String())
-
-		cookies := w.Result().Cookies()
-		w = httptest.NewRecorder()
-		ctx.Request = httptest.NewRequest(http.MethodGet, "/check-session", nil)
-		for _, cookie := range cookies {
-			ctx.Request.AddCookie(cookie)
-		}
-
-		r.GET("/check-session", checkSessionHandler)
-		r.ServeHTTP(w, ctx.Request)
-
-		assert.Equal(t, http.StatusUnauthorized, w.Code)
-		assert.JSONEq(t, `{"error":"No active session"}`, w.Body.String())
-	})
-
-	t.Run("internal server error", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		ctx, r := gin.CreateTestContext(w)
-
-		reqBody := `{"email":"test@example.com","password":"securepassword"}`
-		ctx.Request = httptest.NewRequest(http.MethodPost, "/login", bytes.NewBufferString(reqBody))
-		ctx.Request.Header.Set("Content-Type", "application/json")
-
-		store := memstore.NewStore([]byte("secret"))
-		r.Use(sessions.Sessions("mysession", store))
-
-		mockAuthService.EXPECT().Login(gomock.Any(), services.LoginRequest{
-			Email:    "test@example.com",
-			Password: "securepassword",
-		}, gomock.Any()).Return("", "", errors.New("unexpected error"))
-
-		r.POST("/login", authHandler.Login)
-		r.ServeHTTP(w, ctx.Request)
-
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
-		assert.JSONEq(t, `{"error":"Failed to log in"}`, w.Body.String())
-
-		cookies := w.Result().Cookies()
-		w = httptest.NewRecorder()
-		ctx.Request = httptest.NewRequest(http.MethodGet, "/check-session", nil)
-		for _, cookie := range cookies {
-			ctx.Request.AddCookie(cookie)
-		}
-
-		r.GET("/check-session", checkSessionHandler)
-		r.ServeHTTP(w, ctx.Request)
-
-		assert.Equal(t, http.StatusUnauthorized, w.Code)
-		assert.JSONEq(t, `{"error":"No active session"}`, w.Body.String())
-	})
-
-	t.Run("failed to save session", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		ctx, r := gin.CreateTestContext(w)
-
-		reqBody := `{"email":"test@example.com","password":"securepassword"}`
-		ctx.Request = httptest.NewRequest(http.MethodPost, "/login", bytes.NewBufferString(reqBody))
-		ctx.Request.Header.Set("Content-Type", "application/json")
-
-		mockSession := middlewares_mock.NewMockSession(errors.New("session save failed"))
-
-		// Use middleware to inject the mock session
-		r.Use(func(c *gin.Context) {
-			// Override the default session with our mock
-			c.Set(sessions.DefaultKey, mockSession)
-			c.Next()
+			testutils.AssertResponse(t, setup.recorder.Result(), tt.checkSessionWant.Status, []byte(tt.checkSessionWant.RespFile))
 		})
-
-		mockAuthService.EXPECT().Login(gomock.Any(), services.LoginRequest{
-			Email:    "test@example.com",
-			Password: "securepassword",
-		}, gomock.Any()).Return("user-id-123", "access-token-123", nil)
-
-		r.POST("/login", authHandler.Login)
-		r.ServeHTTP(w, ctx.Request)
-
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
-		assert.JSONEq(t, `{"error":"Failed to log in"}`, w.Body.String())
-	})
+	}
 }
 
 func TestAuthHandler_Logout(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+	tests := []struct {
+		name             string
+		want             want
+		checkSessionWant want
+		useMockSession   bool
+	}{
+		{
+			name: "successful logout",
+			want: want{
+				Status:   http.StatusOK,
+				RespFile: "testdata/logout/200_resp.json.golden",
+			},
+			checkSessionWant: checkSessionWants.NotExist,
+			useMockSession:   false,
+		},
+		{
+			name: "failed to save session",
+			want: want{
+				Status:   http.StatusInternalServerError,
+				RespFile: "testdata/logout/500_resp.json.golden",
+			},
+			checkSessionWant: checkSessionWants.NotExist,
+			useMockSession:   true,
+		},
+	}
 
-	mockAuthService := mock_services.NewMockIAuthService(ctrl)
-	authHandler := handlers.NewAuthHandler(mockAuthService)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setup := setupTest(t, tt.useMockSession)
+			defer setup.ctrl.Finish()
 
-	gin.SetMode(gin.TestMode)
+			setup.context.Request = createRequest(http.MethodPost, "/logout", nil)
+			setup.router.POST("/logout", setup.authHandler.Logout)
+			setup.router.ServeHTTP(setup.recorder, setup.context.Request)
 
-	t.Run("successful logout", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		ctx, r := gin.CreateTestContext(w)
+			testutils.AssertResponse(t, setup.recorder.Result(), tt.want.Status, testutils.LoadFile(t, tt.want.RespFile))
 
-		ctx.Request = httptest.NewRequest(http.MethodPost, "/logout", nil)
+			// Verify session
+			cookies := setup.recorder.Result().Cookies()
+			setup.recorder = httptest.NewRecorder()
+			setup.context.Request = httptest.NewRequest(http.MethodGet, "/check-session", nil)
+			for _, cookie := range cookies {
+				setup.context.Request.AddCookie(cookie)
+			}
 
-		store := memstore.NewStore([]byte("secret"))
-		r.Use(sessions.Sessions("mysession", store))
+			setup.router.GET("/check-session", checkSessionHandler)
+			setup.router.ServeHTTP(setup.recorder, setup.context.Request)
 
-		r.POST("/logout", authHandler.Logout)
-		r.ServeHTTP(w, ctx.Request)
-
-		assert.Equal(t, http.StatusOK, w.Code)
-		assert.JSONEq(t, `{"message":"Logged out"}`, w.Body.String())
-
-		cookies := w.Result().Cookies()
-		w = httptest.NewRecorder()
-		ctx.Request = httptest.NewRequest(http.MethodGet, "/check-session", nil)
-		for _, cookie := range cookies {
-			ctx.Request.AddCookie(cookie)
-		}
-
-		r.GET("/check-session", checkSessionHandler)
-		r.ServeHTTP(w, ctx.Request)
-
-		assert.Equal(t, http.StatusUnauthorized, w.Code)
-		assert.JSONEq(t, `{"error":"No active session"}`, w.Body.String())
-	})
-
-	t.Run("failed to save session", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		ctx, r := gin.CreateTestContext(w)
-
-		ctx.Request = httptest.NewRequest(http.MethodPost, "/logout", nil)
-
-		mockSession := middlewares_mock.NewMockSession(errors.New("session save failed"))
-
-		r.Use(func(c *gin.Context) {
-			c.Set(sessions.DefaultKey, mockSession)
-			c.Next()
+			testutils.AssertResponse(t, setup.recorder.Result(), tt.checkSessionWant.Status, []byte(tt.checkSessionWant.RespFile))
 		})
-
-		r.POST("/logout", authHandler.Logout)
-		r.ServeHTTP(w, ctx.Request)
-
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
-		assert.JSONEq(t, `{"error":"Failed to log out"}`, w.Body.String())
-	})
-
+	}
 }

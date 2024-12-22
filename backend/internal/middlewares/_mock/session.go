@@ -5,6 +5,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// This mock is basically for simulating the case of getting error upon session.Save()
+
 type MockSessionStore struct {
 	sessions.Store
 	saveErr error
@@ -19,18 +21,20 @@ func (m *MockSessionStore) Get(ctx *gin.Context, name string) (sessions.Session,
 }
 
 type MockSession struct {
-	data    map[interface{}]interface{}
-	saveErr error
-	id      string
-	options *sessions.Options
+	data      map[interface{}]interface{}
+	saveErr   error
+	id        string
+	options   *sessions.Options
+	dirtyData map[interface{}]interface{}
 }
 
 func NewMockSession(saveErr error) *MockSession {
 	return &MockSession{
-		data:    make(map[interface{}]interface{}),
-		saveErr: saveErr,
-		id:      "mock-session-id",
-		options: &sessions.Options{},
+		data:      make(map[interface{}]interface{}),
+		saveErr:   saveErr,
+		id:        "mock-session-id",
+		options:   &sessions.Options{},
+		dirtyData: make(map[interface{}]interface{}),
 	}
 }
 
@@ -39,15 +43,15 @@ func (m *MockSession) Get(key interface{}) interface{} {
 }
 
 func (m *MockSession) Set(key, value interface{}) {
-	m.data[key] = value
+	m.dirtyData[key] = value
 }
 
 func (m *MockSession) Delete(key interface{}) {
-	delete(m.data, key)
+	delete(m.dirtyData, key)
 }
 
 func (m *MockSession) Clear() {
-	m.data = make(map[interface{}]interface{})
+	m.dirtyData = make(map[interface{}]interface{})
 }
 
 func (m *MockSession) AddFlash(value interface{}, vars ...string) {
@@ -62,7 +66,13 @@ func (m *MockSession) Options(options sessions.Options) {
 }
 
 func (m *MockSession) Save() error {
-	return m.saveErr
+	if m.saveErr != nil {
+		m.dirtyData = m.data // simulate rollback upon save failure
+		return m.saveErr
+	}
+
+	m.data = m.dirtyData
+	return nil
 }
 
 func (m *MockSession) ID() string {

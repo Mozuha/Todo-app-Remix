@@ -77,7 +77,7 @@ func TestUserService(t *testing.T) {
 		user, err := userService.GetMe(ctx, uIDUuid)
 
 		assert.Error(t, err)
-		assert.Equal(t, db.User{}, user)
+		assert.Equal(t, db.User{}, *user)
 	})
 
 	t.Run("UpdateUsername_Error", func(t *testing.T) {
