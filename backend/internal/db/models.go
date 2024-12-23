@@ -14,8 +14,8 @@ type Todo struct {
 	Description string
 	Position    int32
 	Completed   pgtype.Bool
-	CreatedAt   pgtype.Timestamp
-	UpdatedAt   pgtype.Timestamp
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
 }
 
 type User struct {
@@ -23,7 +23,7 @@ type User struct {
 	UserID       pgtype.UUID
 	Username     string
 	Email        string
-	PasswordHash string
-	CreatedAt    pgtype.Timestamp
-	UpdatedAt    pgtype.Timestamp
+	PasswordHash []byte
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
 }

@@ -57,9 +57,9 @@ func TestAuthService(t *testing.T) {
 		mockQueries.EXPECT().
 			CreateUser(ctx, db.CreateUserParams{
 				Email:        req.Email,
-				PasswordHash: hashedPassword,
+				PasswordHash: []byte(hashedPassword),
 			}).
-			Return(db.User{UserID: uIDUuid, Email: req.Email, PasswordHash: hashedPassword}, nil)
+			Return(db.User{UserID: uIDUuid, Email: req.Email, PasswordHash: []byte(hashedPassword)}, nil)
 
 		user, err := authService.Register(ctx, req)
 
@@ -79,7 +79,7 @@ func TestAuthService(t *testing.T) {
 
 		mockQueries.EXPECT().
 			GetUserByEmail(ctx, req.Email).
-			Return(db.User{UserID: uIDUuid, PasswordHash: hashedPassword}, nil)
+			Return(db.User{UserID: uIDUuid, PasswordHash: []byte(hashedPassword)}, nil)
 
 		mockPassHasher.EXPECT().
 			CompareHashAndPassword([]byte(hashedPassword), []byte(req.Password)).
@@ -126,7 +126,7 @@ func TestAuthService(t *testing.T) {
 
 		mockQueries.EXPECT().
 			GetUserByEmail(ctx, req.Email).
-			Return(db.User{PasswordHash: correctHashedPassword}, nil)
+			Return(db.User{PasswordHash: []byte(correctHashedPassword)}, nil)
 
 		mockPassHasher.EXPECT().
 			CompareHashAndPassword([]byte(correctHashedPassword), []byte(req.Password)).

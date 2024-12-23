@@ -37,7 +37,7 @@ func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (*db.Us
 
 	user, err := s.SqlClient.CreateUser(ctx, db.CreateUserParams{
 		Email:        req.Email,
-		PasswordHash: string(hashedPassword),
+		PasswordHash: hashedPassword,
 	})
 	if err != nil {
 		return nil, err
