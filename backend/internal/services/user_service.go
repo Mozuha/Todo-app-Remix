@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"todo-app/internal/db"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -21,7 +22,11 @@ func NewUserService(sqlClient db.WrappedQuerier) *UserService {
 
 func (s *UserService) GetMe(ctx context.Context, userID pgtype.UUID) (*db.User, error) {
 	user, err := s.SqlClient.GetUserByUserID(ctx, userID)
-	return &user, err
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
 }
 
 func (s *UserService) UpdateUsername(ctx context.Context, userID pgtype.UUID, req UpdateUsernameRequest) error {
@@ -32,5 +37,12 @@ func (s *UserService) UpdateUsername(ctx context.Context, userID pgtype.UUID, re
 }
 
 func (s *UserService) DeleteUser(ctx context.Context, userID pgtype.UUID) error {
-	return s.SqlClient.DeleteUser(ctx, userID)
+	user, err := s.SqlClient.DeleteUser(ctx, userID)
+	if err != nil {
+		return err
+	} else if user.ID == 0 {
+		return errors.New("no rows in result set")
+	}
+
+	return nil
 }

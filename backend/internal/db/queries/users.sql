@@ -15,5 +15,6 @@ UPDATE users
 SET username = $1, updated_at = CURRENT_TIMESTAMP
 WHERE user_id = $2;
 
--- name: DeleteUser :exec
-DELETE FROM users WHERE user_id = $1;
+-- name: DeleteUser :one
+DELETE FROM users WHERE user_id = $1
+RETURNING *;

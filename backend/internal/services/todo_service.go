@@ -46,7 +46,7 @@ func (s *TodoService) CreateTodo(ctx context.Context, userID pgtype.UUID, req Cr
 		return nil, err
 	}
 
-	return &todo, err
+	return &todo, nil
 }
 
 func (s *TodoService) ListTodos(ctx context.Context, userID pgtype.UUID) (*[]db.Todo, error) {
@@ -60,7 +60,7 @@ func (s *TodoService) ListTodos(ctx context.Context, userID pgtype.UUID) (*[]db.
 		return nil, err
 	}
 
-	return &todos, err
+	return &todos, nil
 }
 
 func (s *TodoService) SearchTodos(ctx context.Context, userID pgtype.UUID, keyword string) (*[]db.Todo, error) {
@@ -77,7 +77,7 @@ func (s *TodoService) SearchTodos(ctx context.Context, userID pgtype.UUID, keywo
 		return nil, err
 	}
 
-	return &todos, err
+	return &todos, nil
 }
 
 func (s *TodoService) UpdateTodo(ctx context.Context, userID pgtype.UUID, todoID int32, req UpdateTodoRequest) (*db.Todo, error) {
@@ -97,7 +97,7 @@ func (s *TodoService) UpdateTodo(ctx context.Context, userID pgtype.UUID, todoID
 		return nil, err
 	}
 
-	return &todo, err
+	return &todo, nil
 }
 
 func (s *TodoService) UpdateTodoPosition(ctx context.Context, userID pgtype.UUID, todoID int32, req UpdateTodoPositionRequest) (*db.Todo, error) {
@@ -116,7 +116,7 @@ func (s *TodoService) UpdateTodoPosition(ctx context.Context, userID pgtype.UUID
 		return nil, err
 	}
 
-	return &todo, err
+	return &todo, nil
 }
 
 func (s *TodoService) DeleteTodo(ctx context.Context, userID pgtype.UUID, todoID int32) error {
@@ -125,13 +125,15 @@ func (s *TodoService) DeleteTodo(ctx context.Context, userID pgtype.UUID, todoID
 		return errors.New("invalid userID")
 	}
 
-	err = s.SqlClient.DeleteTodo(ctx, db.DeleteTodoParams{
+	todo, err := s.SqlClient.DeleteTodo(ctx, db.DeleteTodoParams{
 		ID:     todoID,
 		UserID: user.ID,
 	})
 	if err != nil {
 		return err
+	} else if todo.ID == 0 {
+		return errors.New("no rows in result set")
 	}
 
-	return err
+	return nil
 }

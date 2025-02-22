@@ -43,7 +43,7 @@ func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (*db.Us
 		return nil, err
 	}
 
-	return &user, err
+	return &user, nil
 }
 
 func (s *AuthService) Login(ctx context.Context, req LoginRequest, sessionID string) (string, string, error) {

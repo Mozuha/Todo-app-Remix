@@ -60,7 +60,7 @@ func TestUserService(t *testing.T) {
 
 		mockQueries.EXPECT().
 			DeleteUser(ctx, uIDUuid).
-			Return(nil)
+			Return(db.User{ID: 1, UserID: uIDUuid}, nil)
 
 		err := userService.DeleteUser(ctx, uIDUuid)
 
@@ -72,15 +72,28 @@ func TestUserService(t *testing.T) {
 
 		mockQueries.EXPECT().
 			GetUserByUserID(ctx, uIDUuid).
-			Return(db.User{}, errors.New("user not found"))
+			Return(db.User{}, errors.New("no rows in result set"))
+
+		user, err := userService.GetMe(ctx, uIDUuid)
+
+		assert.Equal(t, errors.New("no rows in result set"), err)
+		assert.Nil(t, user)
+	})
+
+	t.Run("GetMe_DBError", func(t *testing.T) {
+		ctx := context.Background()
+
+		mockQueries.EXPECT().
+			GetUserByUserID(ctx, uIDUuid).
+			Return(db.User{}, errors.New("get failed"))
 
 		user, err := userService.GetMe(ctx, uIDUuid)
 
 		assert.Error(t, err)
-		assert.Equal(t, db.User{}, *user)
+		assert.Nil(t, user)
 	})
 
-	t.Run("UpdateUsername_Error", func(t *testing.T) {
+	t.Run("UpdateUsername_DBError", func(t *testing.T) {
 		ctx := context.Background()
 		req := services.UpdateUsernameRequest{
 			Username: "new_username",
@@ -98,12 +111,24 @@ func TestUserService(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("DeleteUser_Error", func(t *testing.T) {
+	t.Run("DeleteUser_UserNotFound", func(t *testing.T) {
 		ctx := context.Background()
 
 		mockQueries.EXPECT().
 			DeleteUser(ctx, uIDUuid).
-			Return(errors.New("delete failed"))
+			Return(db.User{}, nil)
+
+		err := userService.DeleteUser(ctx, uIDUuid)
+
+		assert.Equal(t, errors.New("no rows in result set"), err)
+	})
+
+	t.Run("DeleteUser_DBError", func(t *testing.T) {
+		ctx := context.Background()
+
+		mockQueries.EXPECT().
+			DeleteUser(ctx, uIDUuid).
+			Return(db.User{}, errors.New("delete failed"))
 
 		err := userService.DeleteUser(ctx, uIDUuid)
 

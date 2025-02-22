@@ -31,5 +31,6 @@ SET position = (sqlc.arg(prevPos)::NUMERIC + sqlc.arg(nextPos)::NUMERIC) / 2,
 WHERE todos.id = $1 AND todos.user_id = $2
 RETURNING *;
 
--- name: DeleteTodo :exec
-DELETE FROM todos WHERE id = $1 AND user_id = $2;
+-- name: DeleteTodo :one
+DELETE FROM todos WHERE id = $1 AND user_id = $2
+RETURNING *;

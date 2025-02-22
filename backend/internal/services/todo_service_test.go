@@ -354,7 +354,7 @@ func TestTodoService(t *testing.T) {
 				ID:     todoID,
 				UserID: 1,
 			}).
-			Return(nil)
+			Return(db.Todo{ID: todoID}, nil)
 
 		err := todoService.DeleteTodo(ctx, uIDUuid, todoID)
 
@@ -374,6 +374,26 @@ func TestTodoService(t *testing.T) {
 		assert.Error(t, err)
 	})
 
+	t.Run("DeleteTodo_TodoNotFound", func(t *testing.T) {
+		ctx := context.Background()
+		var todoID int32 = 1000
+
+		mockQueries.EXPECT().
+			GetUserByUserID(ctx, uIDUuid).
+			Return(db.User{ID: 1}, nil)
+
+		mockQueries.EXPECT().
+			DeleteTodo(ctx, db.DeleteTodoParams{
+				ID:     todoID,
+				UserID: 1,
+			}).
+			Return(db.Todo{}, nil)
+
+		err := todoService.DeleteTodo(ctx, uIDUuid, todoID)
+
+		assert.Equal(t, errors.New("no rows in result set"), err)
+	})
+
 	t.Run("DeleteTodo_DBError", func(t *testing.T) {
 		ctx := context.Background()
 		var todoID int32 = 1
@@ -387,7 +407,7 @@ func TestTodoService(t *testing.T) {
 				ID:     todoID,
 				UserID: 1,
 			}).
-			Return(errors.New("db error"))
+			Return(db.Todo{}, errors.New("db error"))
 
 		err := todoService.DeleteTodo(ctx, uIDUuid, todoID)
 

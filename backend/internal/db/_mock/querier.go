@@ -74,11 +74,12 @@ func (mr *MockWrappedQuerierMockRecorder) CreateUser(ctx, arg any) *gomock.Call 
 }
 
 // DeleteTodo mocks base method.
-func (m *MockWrappedQuerier) DeleteTodo(ctx context.Context, arg db.DeleteTodoParams) error {
+func (m *MockWrappedQuerier) DeleteTodo(ctx context.Context, arg db.DeleteTodoParams) (db.Todo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteTodo", ctx, arg)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(db.Todo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // DeleteTodo indicates an expected call of DeleteTodo.
@@ -88,11 +89,12 @@ func (mr *MockWrappedQuerierMockRecorder) DeleteTodo(ctx, arg any) *gomock.Call 
 }
 
 // DeleteUser mocks base method.
-func (m *MockWrappedQuerier) DeleteUser(ctx context.Context, userID pgtype.UUID) error {
+func (m *MockWrappedQuerier) DeleteUser(ctx context.Context, userID pgtype.UUID) (db.User, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteUser", ctx, userID)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(db.User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // DeleteUser indicates an expected call of DeleteUser.
