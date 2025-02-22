@@ -14,7 +14,7 @@ import (
 const createTodo = `-- name: CreateTodo :one
 INSERT INTO todos (user_id, description, position)
 VALUES ($1, $2, 
-    (SELECT COALESCE(MAX(position) + 1, 0) FROM todos WHERE user_id = $1)
+    COALESCE((SELECT MAX(position) FROM todos WHERE user_id = $1) + 100, 100)  -- default gap of 100
 )
 RETURNING id, user_id, description, position, completed, created_at, updated_at
 `
@@ -54,7 +54,7 @@ func (q *Queries) DeleteTodo(ctx context.Context, arg DeleteTodoParams) error {
 }
 
 const listTodos = `-- name: ListTodos :many
-SELECT id, user_id, description, position, completed, created_at, updated_at FROM todos WHERE user_id = $1 ORDER BY completed, position
+SELECT id, user_id, description, position, completed, created_at, updated_at FROM todos WHERE user_id = $1 ORDER BY position
 `
 
 func (q *Queries) ListTodos(ctx context.Context, userID int32) ([]Todo, error) {
@@ -90,7 +90,7 @@ SELECT id, user_id, description, position, completed, created_at, updated_at
 FROM todos
 WHERE user_id = $1
   AND description @@ to_tsquery('english', $2)
-ORDER BY completed, position
+ORDER BY position
 `
 
 type SearchTodosParams struct {
@@ -140,7 +140,7 @@ type UpdateTodoParams struct {
 	ID          int32
 	Description string
 	Completed   pgtype.Bool
-	Position    int32
+	Position    pgtype.Numeric
 	UserID      int32
 }
 
@@ -166,21 +166,27 @@ func (q *Queries) UpdateTodo(ctx context.Context, arg UpdateTodoParams) (Todo, e
 }
 
 const updateTodoPosition = `-- name: UpdateTodoPosition :one
-UPDATE todos
-SET position = $2,
+UPDATE todos 
+SET position = ($3::NUMERIC + $4::NUMERIC) / 2,
     updated_at = NOW()
-WHERE id = $1 AND user_id = $3
+WHERE todos.id = $1 AND todos.user_id = $2
 RETURNING id, user_id, description, position, completed, created_at, updated_at
 `
 
 type UpdateTodoPositionParams struct {
-	ID       int32
-	Position int32
-	UserID   int32
+	ID      int32
+	UserID  int32
+	Prevpos pgtype.Numeric
+	Nextpos pgtype.Numeric
 }
 
 func (q *Queries) UpdateTodoPosition(ctx context.Context, arg UpdateTodoPositionParams) (Todo, error) {
-	row := q.db.QueryRow(ctx, updateTodoPosition, arg.ID, arg.Position, arg.UserID)
+	row := q.db.QueryRow(ctx, updateTodoPosition,
+		arg.ID,
+		arg.UserID,
+		arg.Prevpos,
+		arg.Nextpos,
+	)
 	var i Todo
 	err := row.Scan(
 		&i.ID,

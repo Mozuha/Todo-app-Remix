@@ -247,3 +247,116 @@ func (mr *MockITokenGeneratorMockRecorder) ValidateToken(tokenString any) *gomoc
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateToken", reflect.TypeOf((*MockITokenGenerator)(nil).ValidateToken), tokenString)
 }
+
+// MockITodoService is a mock of ITodoService interface.
+type MockITodoService struct {
+	ctrl     *gomock.Controller
+	recorder *MockITodoServiceMockRecorder
+	isgomock struct{}
+}
+
+// MockITodoServiceMockRecorder is the mock recorder for MockITodoService.
+type MockITodoServiceMockRecorder struct {
+	mock *MockITodoService
+}
+
+// NewMockITodoService creates a new mock instance.
+func NewMockITodoService(ctrl *gomock.Controller) *MockITodoService {
+	mock := &MockITodoService{ctrl: ctrl}
+	mock.recorder = &MockITodoServiceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockITodoService) EXPECT() *MockITodoServiceMockRecorder {
+	return m.recorder
+}
+
+// CreateTodo mocks base method.
+func (m *MockITodoService) CreateTodo(ctx context.Context, userID pgtype.UUID, req services.CreateTodoRequest) (*db.Todo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateTodo", ctx, userID, req)
+	ret0, _ := ret[0].(*db.Todo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateTodo indicates an expected call of CreateTodo.
+func (mr *MockITodoServiceMockRecorder) CreateTodo(ctx, userID, req any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateTodo", reflect.TypeOf((*MockITodoService)(nil).CreateTodo), ctx, userID, req)
+}
+
+// DeleteTodo mocks base method.
+func (m *MockITodoService) DeleteTodo(ctx context.Context, userID pgtype.UUID, todoID int32) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteTodo", ctx, userID, todoID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteTodo indicates an expected call of DeleteTodo.
+func (mr *MockITodoServiceMockRecorder) DeleteTodo(ctx, userID, todoID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteTodo", reflect.TypeOf((*MockITodoService)(nil).DeleteTodo), ctx, userID, todoID)
+}
+
+// ListTodos mocks base method.
+func (m *MockITodoService) ListTodos(ctx context.Context, userID pgtype.UUID) (*[]db.Todo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListTodos", ctx, userID)
+	ret0, _ := ret[0].(*[]db.Todo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListTodos indicates an expected call of ListTodos.
+func (mr *MockITodoServiceMockRecorder) ListTodos(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTodos", reflect.TypeOf((*MockITodoService)(nil).ListTodos), ctx, userID)
+}
+
+// SearchTodos mocks base method.
+func (m *MockITodoService) SearchTodos(ctx context.Context, userID pgtype.UUID, keyword string) (*[]db.Todo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SearchTodos", ctx, userID, keyword)
+	ret0, _ := ret[0].(*[]db.Todo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SearchTodos indicates an expected call of SearchTodos.
+func (mr *MockITodoServiceMockRecorder) SearchTodos(ctx, userID, keyword any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchTodos", reflect.TypeOf((*MockITodoService)(nil).SearchTodos), ctx, userID, keyword)
+}
+
+// UpdateTodo mocks base method.
+func (m *MockITodoService) UpdateTodo(ctx context.Context, userID pgtype.UUID, todoID int32, req services.UpdateTodoRequest) (*db.Todo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateTodo", ctx, userID, todoID, req)
+	ret0, _ := ret[0].(*db.Todo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateTodo indicates an expected call of UpdateTodo.
+func (mr *MockITodoServiceMockRecorder) UpdateTodo(ctx, userID, todoID, req any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateTodo", reflect.TypeOf((*MockITodoService)(nil).UpdateTodo), ctx, userID, todoID, req)
+}
+
+// UpdateTodoPosition mocks base method.
+func (m *MockITodoService) UpdateTodoPosition(ctx context.Context, userID pgtype.UUID, todoID int32, req services.UpdateTodoPositionRequest) (*db.Todo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateTodoPosition", ctx, userID, todoID, req)
+	ret0, _ := ret[0].(*db.Todo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateTodoPosition indicates an expected call of UpdateTodoPosition.
+func (mr *MockITodoServiceMockRecorder) UpdateTodoPosition(ctx, userID, todoID, req any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateTodoPosition", reflect.TypeOf((*MockITodoService)(nil).UpdateTodoPosition), ctx, userID, todoID, req)
+}

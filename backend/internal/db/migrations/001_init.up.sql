@@ -15,7 +15,7 @@ CREATE TABLE todos (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   description TEXT NOT NULL,
-  position INTEGER NOT NULL DEFAULT 0,
+  position NUMERIC NOT NULL DEFAULT 0,
   completed BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
@@ -94,3 +94,33 @@ CREATE TRIGGER refresh_todos_updated_at_step2
 CREATE TRIGGER refresh_todos_updated_at_step3
   BEFORE UPDATE ON todos FOR EACH ROW
   EXECUTE PROCEDURE refresh_updated_at_step3();
+
+-- Automatically rebalancing todo positions when needed
+CREATE OR REPLACE FUNCTION rebalance_todo_positions()
+RETURNS TRIGGER AS $$
+DECLARE
+    gap NUMERIC;
+    min_gap NUMERIC := 1; -- Minimum allowed gap
+BEGIN
+    -- Find the smallest gap between consecutive todos
+    SELECT MIN(t2.position - t1.position) INTO gap
+    FROM todos t1
+    JOIN todos t2 ON t1.user_id = t2.user_id AND t1.position < t2.position
+    WHERE t1.user_id = NEW.user_id;
+
+    -- If the smallest gap is too small, rebalance
+    IF gap IS NOT NULL AND gap < min_gap THEN
+        UPDATE todos
+        SET position = (ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY position) * 100)
+        WHERE user_id = NEW.user_id;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_rebalance_positions
+AFTER UPDATE ON todos
+FOR EACH ROW
+WHEN (OLD.position IS DISTINCT FROM NEW.position)
+EXECUTE FUNCTION rebalance_todo_positions();

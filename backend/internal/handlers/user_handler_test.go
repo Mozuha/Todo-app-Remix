@@ -82,6 +82,14 @@ func TestUserHandler_GetMe(t *testing.T) {
 			setUserIDInCtx: false,
 		},
 		{
+			name: "specified user not found",
+			want: want{
+				status:   http.StatusNotFound,
+				respFile: "testdata/get_me/404_resp.json.golden",
+			},
+			setUserIDInCtx: true,
+		},
+		{
 			name: "failed to get user",
 			want: want{
 				status:   http.StatusInternalServerError,
@@ -102,6 +110,8 @@ func TestUserHandler_GetMe(t *testing.T) {
 					switch tt.want.status {
 					case http.StatusOK:
 						return &db.User{UserID: uIDUuid, Username: "testuser", Email: "test@example.com"}, nil
+					case http.StatusNotFound:
+						return nil, errors.New("no rows in result set")
 					case http.StatusInternalServerError:
 						return nil, errors.New("user not found")
 					}
@@ -110,7 +120,6 @@ func TestUserHandler_GetMe(t *testing.T) {
 			}
 
 			setup.context.Request = httptest.NewRequest(http.MethodGet, "/me", nil)
-			setup.context.Request.Header.Set("Content-Type", "application/json")
 			setup.router.GET("/me", setup.userHandler.GetMe)
 			setup.router.ServeHTTP(setup.recorder, setup.context.Request)
 
@@ -154,6 +163,15 @@ func TestUserHandler_UpdateMyUsername(t *testing.T) {
 			setUserIDInCtx: true,
 		},
 		{
+			name:    "specified user not found",
+			reqFile: "testdata/update_my_username/404_req.json.golden",
+			want: want{
+				status:   http.StatusNotFound,
+				respFile: "testdata/update_my_username/404_resp.json.golden",
+			},
+			setUserIDInCtx: true,
+		},
+		{
 			name:    "internal server error",
 			reqFile: "testdata/update_my_username/500_req.json.golden",
 			want: want{
@@ -175,6 +193,8 @@ func TestUserHandler_UpdateMyUsername(t *testing.T) {
 					switch tt.want.status {
 					case http.StatusOK:
 						return nil
+					case http.StatusNotFound:
+						return errors.New("no rows in result set")
 					case http.StatusInternalServerError:
 						return errors.New("unexpected error")
 					}
@@ -215,6 +235,14 @@ func TestUserHandler_DeleteMe(t *testing.T) {
 			setUserIDInCtx: false,
 		},
 		{
+			name: "specified user not found",
+			want: want{
+				status:   http.StatusNotFound,
+				respFile: "testdata/delete_me/404_resp.json.golden",
+			},
+			setUserIDInCtx: true,
+		},
+		{
 			name: "internal server error",
 			want: want{
 				status:   http.StatusInternalServerError,
@@ -235,6 +263,8 @@ func TestUserHandler_DeleteMe(t *testing.T) {
 					switch tt.want.status {
 					case http.StatusOK:
 						return nil
+					case http.StatusNotFound:
+						return errors.New("no rows in result set")
 					case http.StatusInternalServerError:
 						return errors.New("unexpected error")
 					}
@@ -243,7 +273,6 @@ func TestUserHandler_DeleteMe(t *testing.T) {
 			}
 
 			setup.context.Request = httptest.NewRequest(http.MethodDelete, "/me", nil)
-			setup.context.Request.Header.Set("Content-Type", "application/json")
 			setup.router.DELETE("/me", setup.userHandler.DeleteMe)
 			setup.router.ServeHTTP(setup.recorder, setup.context.Request)
 

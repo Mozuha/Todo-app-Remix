@@ -19,6 +19,7 @@ func SetupRouter(sqlClient *db.Queries, redisStore redis.Store) *gin.Engine {
 	authHandler := InitAuthHandler(sqlClient, passHasher, jwter)
 	userHandler := InitUserHandler(sqlClient)
 	authMiddleware := InitAuthMiddleware(jwter)
+	todoHandler := InitTodoHandler(sqlClient)
 
 	r.Use(sessions.Sessions("mysession", redisStore))
 
@@ -41,14 +42,15 @@ func SetupRouter(sqlClient *db.Queries, redisStore redis.Store) *gin.Engine {
 			users.DELETE("/", userHandler.DeleteMe)
 		}
 
-		// todos := v1.Group("/todos", authMiddleware)
-		// {
-		// 	todos.POST("", todoHandler.CreateTodo)
-		// 	todos.GET("", todoHandler.ListTodos)
-		// 	todos.PATCH("/:id", todoHandler.UpdateTodo)
-		// 	todos.DELETE("/:id", todoHandler.DeleteTodo)
-		// 	todos.GET("/search", todoHandler.SearchTodos)
-		// }
+		todos := v1.Group("/todos", authMiddleware)
+		{
+			todos.POST("/", todoHandler.CreateTodo)
+			todos.GET("/", todoHandler.ListTodos)
+			todos.GET("/search", todoHandler.SearchTodos) // /search?keyword={keyword}
+			todos.PUT("/:id", todoHandler.UpdateTodo)
+			todos.PATCH("/:id/position", todoHandler.UpdateTodoPosition)
+			todos.DELETE("/:id", todoHandler.DeleteTodo)
+		}
 	}
 
 	return r

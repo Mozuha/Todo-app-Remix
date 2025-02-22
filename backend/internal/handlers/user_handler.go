@@ -1,15 +1,12 @@
 package handlers
 
 import (
-	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"todo-app/internal/services"
 	"todo-app/internal/utils"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type UserHandler struct {
@@ -26,22 +23,8 @@ func NewUserHandler(userService services.IUserService) *UserHandler {
 	return &UserHandler{UserService: userService}
 }
 
-func getUIDFromCtxAndCast(ctx *gin.Context) (pgtype.UUID, error) {
-	userID, exists := ctx.Get("userID")
-	if !exists {
-		return pgtype.UUID{}, errors.New("userID not found in context")
-	}
-
-	userIDUuid, err := utils.StringToUUID(userID.(string))
-	if err != nil {
-		return pgtype.UUID{}, fmt.Errorf("failed to convert userID to expected type: %v", err)
-	}
-
-	return userIDUuid, nil
-}
-
 func (h *UserHandler) GetMe(ctx *gin.Context) {
-	userIDUuid, err := getUIDFromCtxAndCast(ctx)
+	userIDUuid, err := utils.GetUIDFromCtxAndCast(ctx)
 	if err != nil {
 		log.Println(err.Error())
 		if err.Error() == "userID not found in context" {
@@ -55,6 +38,12 @@ func (h *UserHandler) GetMe(ctx *gin.Context) {
 	user, err := h.UserService.GetMe(ctx, userIDUuid)
 	if err != nil {
 		log.Println(err.Error())
+
+		if err.Error() == "no rows in result set" {
+			ctx.JSON(http.StatusNotFound, gin.H{"error": "Specified user not found"})
+			return
+		}
+
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user"})
 		return
 	}
@@ -63,7 +52,7 @@ func (h *UserHandler) GetMe(ctx *gin.Context) {
 }
 
 func (h *UserHandler) UpdateMyUsername(ctx *gin.Context) {
-	userIDUuid, err := getUIDFromCtxAndCast(ctx)
+	userIDUuid, err := utils.GetUIDFromCtxAndCast(ctx)
 	if err != nil {
 		log.Println(err.Error())
 		if err.Error() == "userID not found in context" {
@@ -83,6 +72,12 @@ func (h *UserHandler) UpdateMyUsername(ctx *gin.Context) {
 	err = h.UserService.UpdateUsername(ctx, userIDUuid, req)
 	if err != nil {
 		log.Println(err.Error())
+
+		if err.Error() == "no rows in result set" {
+			ctx.JSON(http.StatusNotFound, gin.H{"error": "Specified user not found"})
+			return
+		}
+
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update username"})
 		return
 	}
@@ -91,7 +86,7 @@ func (h *UserHandler) UpdateMyUsername(ctx *gin.Context) {
 }
 
 func (h *UserHandler) DeleteMe(ctx *gin.Context) {
-	userIDUuid, err := getUIDFromCtxAndCast(ctx)
+	userIDUuid, err := utils.GetUIDFromCtxAndCast(ctx)
 	if err != nil {
 		log.Println(err.Error())
 		if err.Error() == "userID not found in context" {
@@ -105,6 +100,12 @@ func (h *UserHandler) DeleteMe(ctx *gin.Context) {
 	err = h.UserService.DeleteUser(ctx, userIDUuid)
 	if err != nil {
 		log.Println(err.Error())
+
+		if err.Error() == "no rows in result set" {
+			ctx.JSON(http.StatusNotFound, gin.H{"error": "Specified user not found"})
+			return
+		}
+
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user"})
 		return
 	}

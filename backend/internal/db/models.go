@@ -12,7 +12,7 @@ type Todo struct {
 	ID          int32
 	UserID      int32
 	Description string
-	Position    int32
+	Position    pgtype.Numeric
 	Completed   pgtype.Bool
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz

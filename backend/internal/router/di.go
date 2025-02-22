@@ -21,6 +21,12 @@ func InitUserHandler(sqlClient *db.Queries) *handlers.UserHandler {
 	return handlers.NewUserHandler(s)
 }
 
+func InitTodoHandler(sqlClient *db.Queries) *handlers.TodoHandler {
+	wrappedSqlClient := db.NewWrappedQuerier(sqlClient)
+	s := services.NewTodoService(wrappedSqlClient)
+	return handlers.NewTodoHandler(s)
+}
+
 func InitAuthMiddleware(jwter services.ITokenGenerator) gin.HandlerFunc {
 	return middlewares.AuthMiddleware(jwter)
 }
