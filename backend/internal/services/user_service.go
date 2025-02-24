@@ -2,8 +2,8 @@ package services
 
 import (
 	"context"
-	"errors"
 	"todo-app/internal/db"
+	"todo-app/internal/utils"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -41,7 +41,7 @@ func (s *UserService) DeleteUser(ctx context.Context, userID pgtype.UUID) error 
 	if err != nil {
 		return err
 	} else if user.ID == 0 {
-		return errors.New("no rows in result set")
+		return utils.ErrNoRowsMatchedSQLC
 	}
 
 	return nil

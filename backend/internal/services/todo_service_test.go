@@ -391,7 +391,7 @@ func TestTodoService(t *testing.T) {
 
 		err := todoService.DeleteTodo(ctx, uIDUuid, todoID)
 
-		assert.Equal(t, errors.New("no rows in result set"), err)
+		assert.Equal(t, utils.ErrNoRowsMatchedSQLC, err)
 	})
 
 	t.Run("DeleteTodo_DBError", func(t *testing.T) {

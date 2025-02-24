@@ -26,7 +26,7 @@ func NewAuthHandler(authService services.IAuthService) *AuthHandler {
 func (h *AuthHandler) Register(ctx *gin.Context) {
 	var req services.RegisterRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": utils.MsgInvalidReq})
 		return
 	}
 
@@ -42,7 +42,7 @@ func (h *AuthHandler) Register(ctx *gin.Context) {
 			}
 		}
 
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to register user"})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": utils.MsgInternalServerErr})
 		return
 	}
 
@@ -52,7 +52,7 @@ func (h *AuthHandler) Register(ctx *gin.Context) {
 func (h *AuthHandler) Login(ctx *gin.Context) {
 	var req services.LoginRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": utils.MsgInvalidReq})
 		return
 	}
 
@@ -63,12 +63,12 @@ func (h *AuthHandler) Login(ctx *gin.Context) {
 	if err != nil {
 		log.Println(err.Error())
 
-		if err.Error() == "invalid email or password" {
-			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
+		if err == utils.ErrInvalidEmailOrPswd {
+			ctx.JSON(http.StatusUnauthorized, gin.H{"error": utils.MsgInvalidEmailOrPswd})
 			return
 		}
 
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to log in"})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": utils.MsgInternalServerErr})
 		return
 	}
 
@@ -77,7 +77,7 @@ func (h *AuthHandler) Login(ctx *gin.Context) {
 		// session.Options(sessions.Options{MaxAge: -1})
 		if err = session.Save(); err != nil {
 			log.Println(err.Error())
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to log in"})
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": utils.MsgInternalServerErr})
 			return
 		}
 	}
@@ -85,7 +85,7 @@ func (h *AuthHandler) Login(ctx *gin.Context) {
 	session.Set("userID", userID)
 	if err = session.Save(); err != nil {
 		log.Println(err.Error())
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to log in"})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": utils.MsgInternalServerErr})
 		return
 	}
 
@@ -99,7 +99,7 @@ func (h *AuthHandler) Logout(ctx *gin.Context) {
 	session.Options(sessions.Options{MaxAge: -1})
 	if err := session.Save(); err != nil {
 		log.Println(err.Error())
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to log out"})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": utils.MsgInternalServerErr})
 		return
 	}
 

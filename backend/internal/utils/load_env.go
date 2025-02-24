@@ -36,7 +36,7 @@ func LoadEnv() (string, error) {
 	}
 
 	if err := godotenv.Load(string(rootPath) + `.env`); err != nil {
-		return "", fmt.Errorf("Failed to load env file: %v", err)
+		return "", fmt.Errorf("failed to load env file: %v", err)
 	}
 
 	return runningEnvironment, nil

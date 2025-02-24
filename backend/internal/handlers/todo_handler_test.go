@@ -13,6 +13,7 @@ import (
 	"todo-app/internal/handlers"
 	"todo-app/internal/services"
 	mock_services "todo-app/internal/services/_mock"
+	"todo-app/internal/utils"
 	"todo-app/internal/utils/testutils"
 
 	"github.com/gin-gonic/gin"
@@ -386,7 +387,7 @@ func TestTodoHandler_UpdateTodo(t *testing.T) {
 							UpdatedAt:   pgtype.Timestamptz{Time: mockTime, Valid: true},
 						}, nil
 					case http.StatusNotFound:
-						return nil, errors.New("no rows in result set")
+						return nil, utils.ErrNoRowsMatchedSQLC
 					case http.StatusInternalServerError:
 						return nil, errors.New("unexpected error")
 					}
@@ -484,7 +485,7 @@ func TestTodoHandler_UpdateTodoPosition(t *testing.T) {
 							UpdatedAt:   pgtype.Timestamptz{Time: mockTime, Valid: true},
 						}, nil
 					case http.StatusNotFound:
-						return nil, errors.New("no rows in result set")
+						return nil, utils.ErrNoRowsMatchedSQLC
 					case http.StatusInternalServerError:
 						return nil, errors.New("unexpected error")
 					}
@@ -568,7 +569,7 @@ func TestTodoHandler_DeleteTodo(t *testing.T) {
 					case http.StatusOK:
 						return nil
 					case http.StatusNotFound:
-						return errors.New("no rows in result set")
+						return utils.ErrNoRowsMatchedSQLC
 					case http.StatusInternalServerError:
 						return errors.New("unexpected error")
 					}

@@ -12,6 +12,7 @@ import (
 	middlewares_mock "todo-app/internal/middlewares/_mock"
 	"todo-app/internal/services"
 	mock_services "todo-app/internal/services/_mock"
+	"todo-app/internal/utils"
 	"todo-app/internal/utils/testutils"
 
 	"github.com/gin-contrib/sessions"
@@ -239,7 +240,7 @@ func TestAuthHandler_Login(t *testing.T) {
 					case http.StatusOK:
 						return "user-id-123", "access-token-123", nil
 					case http.StatusUnauthorized:
-						return "", "", errors.New("invalid email or password")
+						return "", "", utils.ErrInvalidEmailOrPswd
 					case http.StatusInternalServerError:
 						if tt.name == "failed to save session" {
 							return "user-id-123", "access-token-123", nil

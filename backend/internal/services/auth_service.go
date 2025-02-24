@@ -49,11 +49,11 @@ func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (*db.Us
 func (s *AuthService) Login(ctx context.Context, req LoginRequest, sessionID string) (string, string, error) {
 	user, err := s.SqlClient.GetUserByEmail(ctx, req.Email)
 	if err != nil {
-		return "", "", errors.New("invalid email or password")
+		return "", "", utils.ErrInvalidEmailOrPswd
 	}
 
 	if err = s.PasswordHasher.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
-		return "", "", errors.New("invalid email or password")
+		return "", "", utils.ErrInvalidEmailOrPswd
 	}
 
 	userIDStr := utils.UUIDToString(user.UserID)

@@ -2,9 +2,9 @@ package services
 
 import (
 	"context"
-	"errors"
 	"math/big"
 	"todo-app/internal/db"
+	"todo-app/internal/utils"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -35,7 +35,7 @@ func NewTodoService(sqlClient db.WrappedQuerier) *TodoService {
 func (s *TodoService) CreateTodo(ctx context.Context, userID pgtype.UUID, req CreateTodoRequest) (*db.Todo, error) {
 	user, err := s.SqlClient.GetUserByUserID(ctx, userID)
 	if err != nil {
-		return nil, errors.New("invalid userID")
+		return nil, utils.ErrInvalidUID
 	}
 
 	todo, err := s.SqlClient.CreateTodo(ctx, db.CreateTodoParams{
@@ -52,7 +52,7 @@ func (s *TodoService) CreateTodo(ctx context.Context, userID pgtype.UUID, req Cr
 func (s *TodoService) ListTodos(ctx context.Context, userID pgtype.UUID) (*[]db.Todo, error) {
 	user, err := s.SqlClient.GetUserByUserID(ctx, userID)
 	if err != nil {
-		return nil, errors.New("invalid userID")
+		return nil, utils.ErrInvalidUID
 	}
 
 	todos, err := s.SqlClient.ListTodos(ctx, user.ID)
@@ -66,7 +66,7 @@ func (s *TodoService) ListTodos(ctx context.Context, userID pgtype.UUID) (*[]db.
 func (s *TodoService) SearchTodos(ctx context.Context, userID pgtype.UUID, keyword string) (*[]db.Todo, error) {
 	user, err := s.SqlClient.GetUserByUserID(ctx, userID)
 	if err != nil {
-		return nil, errors.New("invalid userID")
+		return nil, utils.ErrInvalidUID
 	}
 
 	todos, err := s.SqlClient.SearchTodos(ctx, db.SearchTodosParams{
@@ -83,7 +83,7 @@ func (s *TodoService) SearchTodos(ctx context.Context, userID pgtype.UUID, keywo
 func (s *TodoService) UpdateTodo(ctx context.Context, userID pgtype.UUID, todoID int32, req UpdateTodoRequest) (*db.Todo, error) {
 	user, err := s.SqlClient.GetUserByUserID(ctx, userID)
 	if err != nil {
-		return nil, errors.New("invalid userID")
+		return nil, utils.ErrInvalidUID
 	}
 
 	todo, err := s.SqlClient.UpdateTodo(ctx, db.UpdateTodoParams{
@@ -103,7 +103,7 @@ func (s *TodoService) UpdateTodo(ctx context.Context, userID pgtype.UUID, todoID
 func (s *TodoService) UpdateTodoPosition(ctx context.Context, userID pgtype.UUID, todoID int32, req UpdateTodoPositionRequest) (*db.Todo, error) {
 	user, err := s.SqlClient.GetUserByUserID(ctx, userID)
 	if err != nil {
-		return nil, errors.New("invalid userID")
+		return nil, utils.ErrInvalidUID
 	}
 
 	todo, err := s.SqlClient.UpdateTodoPosition(ctx, db.UpdateTodoPositionParams{
@@ -122,7 +122,7 @@ func (s *TodoService) UpdateTodoPosition(ctx context.Context, userID pgtype.UUID
 func (s *TodoService) DeleteTodo(ctx context.Context, userID pgtype.UUID, todoID int32) error {
 	user, err := s.SqlClient.GetUserByUserID(ctx, userID)
 	if err != nil {
-		return errors.New("invalid userID")
+		return utils.ErrInvalidUID
 	}
 
 	todo, err := s.SqlClient.DeleteTodo(ctx, db.DeleteTodoParams{
@@ -132,7 +132,7 @@ func (s *TodoService) DeleteTodo(ctx context.Context, userID pgtype.UUID, todoID
 	if err != nil {
 		return err
 	} else if todo.ID == 0 {
-		return errors.New("no rows in result set")
+		return utils.ErrNoRowsMatchedSQLC
 	}
 
 	return nil

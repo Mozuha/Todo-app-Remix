@@ -72,11 +72,11 @@ func TestUserService(t *testing.T) {
 
 		mockQueries.EXPECT().
 			GetUserByUserID(ctx, uIDUuid).
-			Return(db.User{}, errors.New("no rows in result set"))
+			Return(db.User{}, utils.ErrNoRowsMatchedSQLC)
 
 		user, err := userService.GetMe(ctx, uIDUuid)
 
-		assert.Equal(t, errors.New("no rows in result set"), err)
+		assert.Equal(t, utils.ErrNoRowsMatchedSQLC, err)
 		assert.Nil(t, user)
 	})
 
@@ -120,7 +120,7 @@ func TestUserService(t *testing.T) {
 
 		err := userService.DeleteUser(ctx, uIDUuid)
 
-		assert.Equal(t, errors.New("no rows in result set"), err)
+		assert.Equal(t, utils.ErrNoRowsMatchedSQLC, err)
 	})
 
 	t.Run("DeleteUser_DBError", func(t *testing.T) {

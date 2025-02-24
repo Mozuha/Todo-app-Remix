@@ -111,7 +111,7 @@ func TestUserHandler_GetMe(t *testing.T) {
 					case http.StatusOK:
 						return &db.User{UserID: uIDUuid, Username: "testuser", Email: "test@example.com"}, nil
 					case http.StatusNotFound:
-						return nil, errors.New("no rows in result set")
+						return nil, utils.ErrNoRowsMatchedSQLC
 					case http.StatusInternalServerError:
 						return nil, errors.New("user not found")
 					}
@@ -194,7 +194,7 @@ func TestUserHandler_UpdateMyUsername(t *testing.T) {
 					case http.StatusOK:
 						return nil
 					case http.StatusNotFound:
-						return errors.New("no rows in result set")
+						return utils.ErrNoRowsMatchedSQLC
 					case http.StatusInternalServerError:
 						return errors.New("unexpected error")
 					}
@@ -264,7 +264,7 @@ func TestUserHandler_DeleteMe(t *testing.T) {
 					case http.StatusOK:
 						return nil
 					case http.StatusNotFound:
-						return errors.New("no rows in result set")
+						return utils.ErrNoRowsMatchedSQLC
 					case http.StatusInternalServerError:
 						return errors.New("unexpected error")
 					}

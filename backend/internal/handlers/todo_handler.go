@@ -30,27 +30,21 @@ func NewTodoHandler(todoService services.ITodoService) *TodoHandler {
 }
 
 func (h *TodoHandler) CreateTodo(ctx *gin.Context) {
-	userIDUuid, err := utils.GetUIDFromCtxAndCast(ctx)
+	userIDUuid, err := utils.GetUIDFromCtxAndCreateRespUponErr(ctx)
 	if err != nil {
-		log.Println(err.Error())
-		if err.Error() == "userID not found in context" {
-			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "UserID not found in context"})
-		} else {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create todo"})
-		}
 		return
 	}
 
 	var req services.CreateTodoRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": utils.MsgInvalidReq})
 		return
 	}
 
 	todo, err := h.TodoService.CreateTodo(ctx, userIDUuid, req)
 	if err != nil {
 		log.Println(err.Error())
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create todo"})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": utils.MsgInternalServerErr})
 		return
 	}
 
@@ -67,21 +61,15 @@ func (h *TodoHandler) CreateTodo(ctx *gin.Context) {
 }
 
 func (h *TodoHandler) ListTodos(ctx *gin.Context) {
-	userIDUuid, err := utils.GetUIDFromCtxAndCast(ctx)
+	userIDUuid, err := utils.GetUIDFromCtxAndCreateRespUponErr(ctx)
 	if err != nil {
-		log.Println(err.Error())
-		if err.Error() == "userID not found in context" {
-			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "UserID not found in context"})
-		} else {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch todos"})
-		}
 		return
 	}
 
 	todos, err := h.TodoService.ListTodos(ctx, userIDUuid)
 	if err != nil {
 		log.Println(err.Error())
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch todos"})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": utils.MsgInternalServerErr})
 		return
 	}
 
@@ -101,27 +89,21 @@ func (h *TodoHandler) ListTodos(ctx *gin.Context) {
 }
 
 func (h *TodoHandler) SearchTodos(ctx *gin.Context) {
-	userIDUuid, err := utils.GetUIDFromCtxAndCast(ctx)
+	userIDUuid, err := utils.GetUIDFromCtxAndCreateRespUponErr(ctx)
 	if err != nil {
-		log.Println(err.Error())
-		if err.Error() == "userID not found in context" {
-			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "UserID not found in context"})
-		} else {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to search todos"})
-		}
 		return
 	}
 
 	keyword := ctx.Query("keyword")
 	if keyword == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": utils.MsgInvalidReq})
 		return
 	}
 
 	todos, err := h.TodoService.SearchTodos(ctx, userIDUuid, keyword)
 	if err != nil {
 		log.Println(err.Error())
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to search todos"})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": utils.MsgInternalServerErr})
 		return
 	}
 
@@ -141,21 +123,15 @@ func (h *TodoHandler) SearchTodos(ctx *gin.Context) {
 }
 
 func (h *TodoHandler) UpdateTodo(ctx *gin.Context) {
-	userIDUuid, err := utils.GetUIDFromCtxAndCast(ctx)
+	userIDUuid, err := utils.GetUIDFromCtxAndCreateRespUponErr(ctx)
 	if err != nil {
-		log.Println(err.Error())
-		if err.Error() == "userID not found in context" {
-			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "UserID not found in context"})
-		} else {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update todo"})
-		}
 		return
 	}
 
 	todoID, err := strconv.Atoi(ctx.Param("id"))
 	var req services.UpdateTodoRequest
 	if reqErr := ctx.ShouldBindJSON(&req); reqErr != nil || err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": utils.MsgInvalidReq})
 		return
 	}
 
@@ -163,12 +139,12 @@ func (h *TodoHandler) UpdateTodo(ctx *gin.Context) {
 	if err != nil {
 		log.Println(err.Error())
 
-		if err.Error() == "no rows in result set" {
-			ctx.JSON(http.StatusNotFound, gin.H{"error": "Specified todo not found"})
+		if err == utils.ErrNoRowsMatchedSQLC {
+			ctx.JSON(http.StatusNotFound, gin.H{"error": utils.MsgResourceNotFound})
 			return
 		}
 
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update todo"})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": utils.MsgInternalServerErr})
 		return
 	}
 
@@ -185,21 +161,15 @@ func (h *TodoHandler) UpdateTodo(ctx *gin.Context) {
 }
 
 func (h *TodoHandler) UpdateTodoPosition(ctx *gin.Context) {
-	userIDUuid, err := utils.GetUIDFromCtxAndCast(ctx)
+	userIDUuid, err := utils.GetUIDFromCtxAndCreateRespUponErr(ctx)
 	if err != nil {
-		log.Println(err.Error())
-		if err.Error() == "userID not found in context" {
-			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "UserID not found in context"})
-		} else {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update todo position"})
-		}
 		return
 	}
 
 	todoID, err := strconv.Atoi(ctx.Param("id"))
 	var req services.UpdateTodoPositionRequest
 	if reqErr := ctx.ShouldBindJSON(&req); reqErr != nil || err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": utils.MsgInvalidReq})
 		return
 	}
 
@@ -207,12 +177,12 @@ func (h *TodoHandler) UpdateTodoPosition(ctx *gin.Context) {
 	if err != nil {
 		log.Println(err.Error())
 
-		if err.Error() == "no rows in result set" {
-			ctx.JSON(http.StatusNotFound, gin.H{"error": "Specified todo not found"})
+		if err == utils.ErrNoRowsMatchedSQLC {
+			ctx.JSON(http.StatusNotFound, gin.H{"error": utils.MsgResourceNotFound})
 			return
 		}
 
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update todo position"})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": utils.MsgInternalServerErr})
 		return
 	}
 
@@ -229,20 +199,14 @@ func (h *TodoHandler) UpdateTodoPosition(ctx *gin.Context) {
 }
 
 func (h *TodoHandler) DeleteTodo(ctx *gin.Context) {
-	userIDUuid, err := utils.GetUIDFromCtxAndCast(ctx)
+	userIDUuid, err := utils.GetUIDFromCtxAndCreateRespUponErr(ctx)
 	if err != nil {
-		log.Println(err.Error())
-		if err.Error() == "userID not found in context" {
-			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "UserID not found in context"})
-		} else {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete todo"})
-		}
 		return
 	}
 
 	todoID, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": utils.MsgInvalidReq})
 		return
 	}
 
@@ -250,12 +214,12 @@ func (h *TodoHandler) DeleteTodo(ctx *gin.Context) {
 	if err != nil {
 		log.Println(err.Error())
 
-		if err.Error() == "no rows in result set" {
-			ctx.JSON(http.StatusNotFound, gin.H{"error": "Specified todo not found"})
+		if err == utils.ErrNoRowsMatchedSQLC {
+			ctx.JSON(http.StatusNotFound, gin.H{"error": utils.MsgResourceNotFound})
 			return
 		}
 
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete todo"})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": utils.MsgInternalServerErr})
 		return
 	}
 
