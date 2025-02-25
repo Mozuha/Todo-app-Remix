@@ -15,7 +15,7 @@ func AuthMiddleware(jwter services.ITokenGenerator) gin.HandlerFunc {
 		// Bearer token will be shown like `Authorization: Bearer <token>` in http header
 
 		authHeader := ctx.GetHeader("Authorization")
-		if authHeader == "" {
+		if authHeader == "" || authHeader == BEARER_SCHEMA {
 			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization token required"})
 			ctx.Abort()
 			return
