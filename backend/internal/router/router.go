@@ -5,12 +5,23 @@ import (
 	"todo-app/internal/db"
 	"todo-app/internal/services"
 
+	_ "todo-app/docs"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
+// @title Todo app API
+// @version 1.0
+// @license.name Apache 2.0
+// @BasePath /api/v1
+// @securitydefinitions.bearerauth BearerAuth
+// @in header
+// @name Authorization
 func SetupRouter(sqlClient *db.Queries, redisStore redis.Store) *gin.Engine {
 	r := gin.Default()
 
@@ -52,6 +63,9 @@ func SetupRouter(sqlClient *db.Queries, redisStore redis.Store) *gin.Engine {
 			todos.DELETE("/:id", todoHandler.DeleteTodo)
 		}
 	}
+
+	// http://localhost:8080/swagger/index.html
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	return r
 }

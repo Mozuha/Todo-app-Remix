@@ -29,6 +29,16 @@ func NewTodoHandler(todoService services.ITodoService) *TodoHandler {
 	return &TodoHandler{TodoService: todoService}
 }
 
+// @Summary Create a new todo
+// @Tags Todo
+// @Accept json
+// @Produce json
+// @Param todo body services.CreateTodoRequest true "Todo details"
+// @Security BearerAuth
+// @Success 201 {object} TodoResponse
+// @Failure 400 {object} gin.H "{"error": "Invalid request"}"
+// @Failure 500 {object} gin.H "{"error": "Internal server error"}"
+// @Router /todos [post]
 func (h *TodoHandler) CreateTodo(ctx *gin.Context) {
 	userIDUuid, err := utils.GetUIDFromCtxAndCreateRespUponErr(ctx)
 	if err != nil {
@@ -60,6 +70,13 @@ func (h *TodoHandler) CreateTodo(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, todoResponse)
 }
 
+// @Summary List all todos
+// @Tags Todo
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {array} TodoResponse
+// @Failure 500 {object} gin.H "{"error": "Internal server error"}"
+// @Router /todos [get]
 func (h *TodoHandler) ListTodos(ctx *gin.Context) {
 	userIDUuid, err := utils.GetUIDFromCtxAndCreateRespUponErr(ctx)
 	if err != nil {
@@ -88,6 +105,15 @@ func (h *TodoHandler) ListTodos(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, todoResponses)
 }
 
+// @Summary Search todos by keyword
+// @Tags Todo
+// @Produce json
+// @Param keyword query string true "Search keyword"
+// @Security BearerAuth
+// @Success 200 {array} TodoResponse
+// @Failure 400 {object} gin.H "{"error": "Invalid request"}"
+// @Failure 500 {object} gin.H "{"error": "Internal server error"}"
+// @Router /todos/search [get]
 func (h *TodoHandler) SearchTodos(ctx *gin.Context) {
 	userIDUuid, err := utils.GetUIDFromCtxAndCreateRespUponErr(ctx)
 	if err != nil {
@@ -122,6 +148,18 @@ func (h *TodoHandler) SearchTodos(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, todoResponses)
 }
 
+// @Summary Update a todo
+// @Tags Todo
+// @Accept json
+// @Produce json
+// @Param id path int true "Todo ID"
+// @Param todo body services.UpdateTodoRequest true "Updated todo details"
+// @Security BearerAuth
+// @Success 200 {object} TodoResponse
+// @Failure 400 {object} gin.H "{"error": "Invalid request"}"
+// @Failure 404 {object} gin.H "{"error": "Resource not found"}"
+// @Failure 500 {object} gin.H "{"error": "Internal server error"}"
+// @Router /todos/{id} [put]
 func (h *TodoHandler) UpdateTodo(ctx *gin.Context) {
 	userIDUuid, err := utils.GetUIDFromCtxAndCreateRespUponErr(ctx)
 	if err != nil {
@@ -160,6 +198,18 @@ func (h *TodoHandler) UpdateTodo(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, todoResponse)
 }
 
+// @Summary Update a todo's position
+// @Tags Todo
+// @Accept json
+// @Produce json
+// @Param id path int true "Todo ID"
+// @Param position body services.UpdateTodoPositionRequest true "Updated position"
+// @Security BearerAuth
+// @Success 200 {object} TodoResponse
+// @Failure 400 {object} gin.H "{"error": "Invalid request"}"
+// @Failure 404 {object} gin.H "{"error": "Resource not found"}"
+// @Failure 500 {object} gin.H "{"error": "Internal server error"}"
+// @Router /todos/{id}/position [put]
 func (h *TodoHandler) UpdateTodoPosition(ctx *gin.Context) {
 	userIDUuid, err := utils.GetUIDFromCtxAndCreateRespUponErr(ctx)
 	if err != nil {
@@ -198,6 +248,16 @@ func (h *TodoHandler) UpdateTodoPosition(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, todoResponse)
 }
 
+// @Summary Delete a todo
+// @Tags Todo
+// @Produce json
+// @Param id path int true "Todo ID"
+// @Security BearerAuth
+// @Success 200 {object} gin.H "{"message": "Todo deleted"}"
+// @Failure 400 {object} gin.H "{"error": "Invalid request"}"
+// @Failure 404 {object} gin.H "{"error": "Resource not found"}"
+// @Failure 500 {object} gin.H "{"error": "Internal server error"}"
+// @Router /todos/{id} [delete]
 func (h *TodoHandler) DeleteTodo(ctx *gin.Context) {
 	userIDUuid, err := utils.GetUIDFromCtxAndCreateRespUponErr(ctx)
 	if err != nil {

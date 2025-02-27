@@ -1,0 +1,453 @@
+basePath: /api/v1
+definitions:
+  gin.H:
+    additionalProperties: {}
+    type: object
+  handlers.GetMeResponse:
+    properties:
+      email:
+        type: string
+      user_id:
+        type: string
+      username:
+        type: string
+    type: object
+  handlers.LoginResponse:
+    properties:
+      access_token:
+        type: string
+      user_id:
+        type: string
+    type: object
+  handlers.TodoResponse:
+    properties:
+      completed:
+        type: boolean
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: integer
+      position:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  services.CreateTodoRequest:
+    properties:
+      description:
+        type: string
+    required:
+      - description
+    type: object
+  services.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+      - email
+      - password
+    type: object
+  services.RegisterRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+      - email
+      - password
+    type: object
+  services.UpdateTodoPositionRequest:
+    properties:
+      next_pos:
+        type: integer
+      prev_pos:
+        type: integer
+    required:
+      - next_pos
+      - prev_pos
+    type: object
+  services.UpdateTodoRequest:
+    properties:
+      completed:
+        type: boolean
+      description:
+        type: string
+      position:
+        type: integer
+    required:
+      - description
+      - position
+    type: object
+  services.UpdateUsernameRequest:
+    properties:
+      username:
+        type: string
+    required:
+      - username
+    type: object
+info:
+  contact: {}
+  license:
+    name: Apache 2.0
+  title: Todo app API
+  version: '1.0'
+paths:
+  /login:
+    post:
+      consumes:
+        - application/json
+      parameters:
+        - description: user credential
+          in: body
+          name: credential
+          required: true
+          schema:
+            $ref: '#/definitions/services.LoginRequest'
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.LoginResponse'
+        '400':
+          description: '{"error": "Invalid request"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+        '401':
+          description: '{"error": "Invalid email or password"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+        '500':
+          description: '{"error": "Internal server error"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: Login a user
+      tags:
+        - Auth
+  /logout:
+    post:
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: '{"message": "Logged out"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+        '500':
+          description: '{"error": "Internal server error"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+        - BearerAuth: []
+      summary: Logout a user
+      tags:
+        - Auth
+  /me:
+    delete:
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: '{"message": "User deleted"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+        '404':
+          description: '{"error": "Resource not found"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+        '500':
+          description: '{"error": "Internal server error"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+        - BearerAuth: []
+      summary: Delete current user
+      tags:
+        - User
+    get:
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.GetMeResponse'
+        '404':
+          description: '{"error": "Resource not found"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+        '500':
+          description: '{"error": "Internal server error"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+        - BearerAuth: []
+      summary: Get current user info
+      tags:
+        - User
+  /me/username:
+    put:
+      consumes:
+        - application/json
+      parameters:
+        - description: New username
+          in: body
+          name: username
+          required: true
+          schema:
+            $ref: '#/definitions/services.UpdateUsernameRequest'
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: '{"message": "Username updated"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+        '400':
+          description: '{"error": "Invalid request"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+        '404':
+          description: '{"error": "Resource not found"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+        '500':
+          description: '{"error": "Internal server error"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+        - BearerAuth: []
+      summary: Update current user's username
+      tags:
+        - User
+  /register:
+    post:
+      consumes:
+        - application/json
+      parameters:
+        - description: user credential
+          in: body
+          name: credential
+          required: true
+          schema:
+            $ref: '#/definitions/services.RegisterRequest'
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: '{"message": "User registered"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+        '400':
+          description: '{"error": "Invalid request"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+        '409':
+          description: '{"error": "User already registered"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+        '500':
+          description: '{"error": "The server encountered unexpected error"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+      summary: Register an user
+      tags:
+        - Auth
+  /todos:
+    get:
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/handlers.TodoResponse'
+            type: array
+        '500':
+          description: '{"error": "Internal server error"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+        - BearerAuth: []
+      summary: List all todos
+      tags:
+        - Todo
+    post:
+      consumes:
+        - application/json
+      parameters:
+        - description: Todo details
+          in: body
+          name: todo
+          required: true
+          schema:
+            $ref: '#/definitions/services.CreateTodoRequest'
+      produces:
+        - application/json
+      responses:
+        '201':
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.TodoResponse'
+        '400':
+          description: '{"error": "Invalid request"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+        '500':
+          description: '{"error": "Internal server error"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+        - BearerAuth: []
+      summary: Create a new todo
+      tags:
+        - Todo
+  /todos/{id}:
+    delete:
+      parameters:
+        - description: Todo ID
+          in: path
+          name: id
+          required: true
+          type: integer
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: '{"message": "Todo deleted"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+        '400':
+          description: '{"error": "Invalid request"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+        '404':
+          description: '{"error": "Resource not found"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+        '500':
+          description: '{"error": "Internal server error"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+        - BearerAuth: []
+      summary: Delete a todo
+      tags:
+        - Todo
+    put:
+      consumes:
+        - application/json
+      parameters:
+        - description: Todo ID
+          in: path
+          name: id
+          required: true
+          type: integer
+        - description: Updated todo details
+          in: body
+          name: todo
+          required: true
+          schema:
+            $ref: '#/definitions/services.UpdateTodoRequest'
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.TodoResponse'
+        '400':
+          description: '{"error": "Invalid request"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+        '404':
+          description: '{"error": "Resource not found"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+        '500':
+          description: '{"error": "Internal server error"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+        - BearerAuth: []
+      summary: Update a todo
+      tags:
+        - Todo
+  /todos/{id}/position:
+    put:
+      consumes:
+        - application/json
+      parameters:
+        - description: Todo ID
+          in: path
+          name: id
+          required: true
+          type: integer
+        - description: Updated position
+          in: body
+          name: position
+          required: true
+          schema:
+            $ref: '#/definitions/services.UpdateTodoPositionRequest'
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.TodoResponse'
+        '400':
+          description: '{"error": "Invalid request"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+        '404':
+          description: '{"error": "Resource not found"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+        '500':
+          description: '{"error": "Internal server error"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+        - BearerAuth: []
+      summary: Update a todo's position
+      tags:
+        - Todo
+  /todos/search:
+    get:
+      parameters:
+        - description: Search keyword
+          in: query
+          name: keyword
+          required: true
+          type: string
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/handlers.TodoResponse'
+            type: array
+        '400':
+          description: '{"error": "Invalid request"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+        '500':
+          description: '{"error": "Internal server error"}'
+          schema:
+            $ref: '#/definitions/gin.H'
+      security:
+        - BearerAuth: []
+      summary: Search todos by keyword
+      tags:
+        - Todo
+swagger: '2.0'

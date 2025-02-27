@@ -23,6 +23,14 @@ func NewUserHandler(userService services.IUserService) *UserHandler {
 	return &UserHandler{UserService: userService}
 }
 
+// @Summary Get current user info
+// @Tags User
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} GetMeResponse
+// @Failure 404 {object} gin.H "{"error": "Resource not found"}"
+// @Failure 500 {object} gin.H "{"error": "Internal server error"}"
+// @Router /me [get]
 func (h *UserHandler) GetMe(ctx *gin.Context) {
 	userIDUuid, err := utils.GetUIDFromCtxAndCreateRespUponErr(ctx)
 	if err != nil {
@@ -45,6 +53,17 @@ func (h *UserHandler) GetMe(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, GetMeResponse{UserID: utils.UUIDToString(user.UserID), Username: user.Username, Email: user.Email})
 }
 
+// @Summary Update current user's username
+// @Tags User
+// @Accept json
+// @Produce json
+// @Param username body services.UpdateUsernameRequest true "New username"
+// @Security BearerAuth
+// @Success 200 {object} gin.H "{"message": "Username updated"}"
+// @Failure 400 {object} gin.H "{"error": "Invalid request"}"
+// @Failure 404 {object} gin.H "{"error": "Resource not found"}"
+// @Failure 500 {object} gin.H "{"error": "Internal server error"}"
+// @Router /me/username [put]
 func (h *UserHandler) UpdateMyUsername(ctx *gin.Context) {
 	userIDUuid, err := utils.GetUIDFromCtxAndCreateRespUponErr(ctx)
 	if err != nil {
@@ -73,6 +92,14 @@ func (h *UserHandler) UpdateMyUsername(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"message": "Username updated"})
 }
 
+// @Summary Delete current user
+// @Tags User
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} gin.H "{"message": "User deleted"}"
+// @Failure 404 {object} gin.H "{"error": "Resource not found"}"
+// @Failure 500 {object} gin.H "{"error": "Internal server error"}"
+// @Router /me [delete]
 func (h *UserHandler) DeleteMe(ctx *gin.Context) {
 	userIDUuid, err := utils.GetUIDFromCtxAndCreateRespUponErr(ctx)
 	if err != nil {

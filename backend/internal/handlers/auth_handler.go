@@ -23,6 +23,16 @@ func NewAuthHandler(authService services.IAuthService) *AuthHandler {
 	return &AuthHandler{AuthService: authService}
 }
 
+// @Summary Register an user
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param credential body services.RegisterRequest true "user credential"
+// @Success 200 {object} gin.H "{"message": "User registered"}"
+// @Failure 400 {object} gin.H "{"error": "Invalid request"}"
+// @Failure 409 {object} gin.H "{"error": "User already registered"}"
+// @Failure 500 {object} gin.H "{"error": "The server encountered unexpected error"}"
+// @Router /register [post]
 func (h *AuthHandler) Register(ctx *gin.Context) {
 	var req services.RegisterRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -49,6 +59,16 @@ func (h *AuthHandler) Register(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, gin.H{"message": "User registered"})
 }
 
+// @Summary Login a user
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param credential body services.LoginRequest true "user credential"
+// @Success 200 {object} LoginResponse
+// @Failure 400 {object} gin.H "{"error": "Invalid request"}"
+// @Failure 401 {object} gin.H "{"error": "Invalid email or password"}"
+// @Failure 500 {object} gin.H "{"error": "Internal server error"}"
+// @Router /login [post]
 func (h *AuthHandler) Login(ctx *gin.Context) {
 	var req services.LoginRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -92,6 +112,13 @@ func (h *AuthHandler) Login(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, LoginResponse{UserID: userID, AccessToken: accessToken})
 }
 
+// @Summary Logout a user
+// @Tags Auth
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} gin.H "{"message": "Logged out"}"
+// @Failure 500 {object} gin.H "{"error": "Internal server error"}"
+// @Router /logout [post]
 func (h *AuthHandler) Logout(ctx *gin.Context) {
 	session := sessions.Default(ctx)
 
