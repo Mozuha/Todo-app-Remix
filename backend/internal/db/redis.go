@@ -41,7 +41,7 @@ func SetupRedisStore(runningEnv string) (redis.Store, error) {
 		Path:     "/",
 		MaxAge:   3600 * tokenLifeSpanHour,
 		HttpOnly: true,
-		Secure:   false, // Set to true in production with HTTPS
+		Secure:   false, // TODO: Set to true in production with HTTPS
 		SameSite: http.SameSiteLaxMode,
 	})
 
