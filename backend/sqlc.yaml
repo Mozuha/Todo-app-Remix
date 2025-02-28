@@ -1,10 +1,11 @@
 version: "2"
 sql:
   - engine: "postgresql"
-    queries: "query.sql"
-    schema: "schema.sql"
+    queries: "internal/db/queries"
+    schema: "internal/db/migrations"
     gen:
       go:
-        package: "sqlc"
-        out: "sqlc"
+        package: "db"
+        out: "internal/db"
         sql_package: "pgx/v5"
+        emit_interface: true # output a Querier interface
