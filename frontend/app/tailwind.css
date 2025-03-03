@@ -4,7 +4,7 @@
 
 html,
 body {
-  @apply bg-white dark:bg-gray-950;
+  @apply bg-background text-foreground;
 
   @media (prefers-color-scheme: dark) {
     color-scheme: dark;
@@ -14,5 +14,39 @@ body {
 @layer base {
   :root {
     --radius: 0.5rem;
+
+    --background: 46, 42%, 88%;  /* general background color */
+    --foreground: 192, 100%, 11%;  /* general text color */
+
+    --primary-a0: 342, 68%, 58%;
+    --primary-a10: 344, 70%, 64%;
+    --primary-a20: 345, 72%, 69%;
+    --primary-a30: 346, 74%, 74%;
+    --primary-a40: 348, 78%, 79%;
+    --primary-a50: 349, 81%, 84%;
+
+    --surface-a0: 46, 42%, 88%;
+    --surface-a10: 46, 42%, 86%;
+    --surface-a20: 47, 41%, 85%;
+    --surface-a30: 46, 40%, 84%;
+    --surface-a40: 49, 40%, 82%;
+    --surface-a50: 47, 38%, 81%;
+
+    --primary-foreground: 46, 10%, 88%;
   }
+}
+
+.dark,
+:root[class~="dark"] {
+  --background: 0, 0%, 9%;
+  --foreground: 46, 10%, 88%;
+
+  --surface-a0: 0, 0%, 9%;
+  --surface-a10: 0, 0%, 18%;
+  --surface-a20: 0, 0%, 27%;
+  --surface-a30: 0, 0%, 36%;
+  --surface-a40: 0, 0%, 45%;
+  --surface-a50: 0, 0%, 56%;
+
+  --primary-foreground: 192, 100%, 11%;
 }
